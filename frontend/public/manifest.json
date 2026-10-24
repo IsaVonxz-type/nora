@@ -1,0 +1,18 @@
+{
+  "name": "Trama",
+  "short_name": "Trama",
+  "description": "Coordina espacios compartidos, disponibilidad y reservas.",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#245dc1",
+  "lang": "es-CO",
+  "icons": [
+    {
+      "src": "/img/trama-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+
+
+:global(.analytics-filters) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  align-items: end;
+}
+
+:global(.analytics-preset-group) {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+:global(.analytics-charts-grid) {
+  align-items: stretch;
+}
+
+:global(.analytics-chart-panel) {
+  min-height: 360px;
+}
+
+:global(.analytics-chart-wrap) {
+  width: 100%;
+  min-height: 280px;
+}
+
+:global(.heatmap-wrap) {
+  overflow-x: auto;
+}
+
+:global(.heatmap-corner) {
+  height: 28px;
+}
+
+:global(.heatmap-date-label), :global(.heatmap-hour-label) {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+:global(.heatmap-date-label) {
+  text-align: center;
+}
+
+:global(.heatmap-hour-label) {
+  text-align: right;
+  padding-right: 0.35rem;
+}
+
+:global(.heatmap-cell) {
+  min-height: 40px;
+  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: #064e3b;
+  border: 1px solid rgba(7, 122, 80, 0.08);
+}
+@media (max-width: 900px) {
+
+  :global(.analytics-filters) {
+    align-items: stretch;
+  }
+
+  :global(.analytics-preset-group) {
+    width: 100%;
+  }
+}
+
+:global(.analytics-filters) {
+  gap: 0.75rem;
+}
+
+:global(.analytics-filters label) {
+  min-width: 150px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+:global(.analytics-chart-panel) {
+  min-height: 340px;
+}
+
+:global(.analytics-chart-wrap) {
+  min-height: 250px;
+}
+
+:global(.heatmap-cell) {
+  min-height: 36px;
+  border-color: rgba(47, 125, 69, 0.1);
+  border-radius: 0.45rem;
+  color: #194b2b;
+  font-family: var(--font-body);
+}
+
+:global([data-theme="dark"] .heatmap-cell) {
+  color: #d9f1d8;
+}
+:global(.heatmap-cell) { background: color-mix(in srgb, #78b8a3 var(--heatmap-strength), #f1f6f4); color: #15362d; }
+:global([data-theme="dark"] .heatmap-cell) { background: color-mix(in srgb, #25634f var(--heatmap-strength), #1c252d); color: #f3faf6; }
+
+:global(.occupancy-heatmap) {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 720px;
+  align-items: center;
+}
+
+:local(.moduleScope) { --css-module-scope: 1; }
+

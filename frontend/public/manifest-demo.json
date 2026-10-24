@@ -1,0 +1,10 @@
+{
+  "name": "Espacio · Demo",
+  "short_name": "Espacio",
+  "start_url": "/organizaciones/demo/",
+  "scope": "/organizaciones/demo/",
+  "display": "standalone",
+  "background_color": "#f0f2f4",
+  "theme_color": "#245dc1",
+  "icons": [{ "src": "/img/espacio-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

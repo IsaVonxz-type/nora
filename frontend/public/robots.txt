@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /login
+Disallow: /dashboard
+Disallow: /ambientes
+Disallow: /reservas
+Disallow: /disponibilidad
+Disallow: /calendario
+Disallow: /analytics
+Disallow: /usuarios
+Disallow: /operaciones
+Disallow: /api/
+
+Sitemap: /sitemap.xml

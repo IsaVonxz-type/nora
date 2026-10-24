@@ -1,0 +1,11 @@
+
+:global(.site-week) { display: grid; gap: 0.85rem; }
+:global(.site-week__day) { display: grid; grid-template-columns: minmax(130px, 1fr) repeat(2, minmax(0, 1fr)); gap: 0.85rem; min-width: 0; margin: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+:global(.site-week__day legend) { padding-inline: 0.35rem; font-weight: 600; }
+:global(.site-week__day label) { display: grid; gap: 0.4rem; font-size: 0.78rem; font-weight: 600; }
+:global(.site-week__day input[type="time"]) { width: 100%; min-width: 0; }
+:global(.site-week__day .site-week__closed) { display: flex; align-items: center; gap: 0.5rem; }
+:global(.site-week__closed input) { width: auto; }
+@media (max-width: 640px) { :global(.site-week__day) { grid-template-columns: repeat(2, minmax(0, 1fr)); } :global(.site-week__closed) { grid-column: 1 / -1; } }
+:local(.moduleScope) { --css-module-scope: 1; }
+

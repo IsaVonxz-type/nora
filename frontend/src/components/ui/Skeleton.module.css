@@ -1,0 +1,57 @@
+
+
+:global(.skeleton) {
+  background: linear-gradient(90deg, #dce8de 25%, #edf4ee 50%, #dce8de 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+  display: block;
+}
+
+:global(.skeleton-card) {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  display: grid;
+  gap: 0.5rem;
+}
+
+:global([data-theme="dark"] .skeleton) {
+  background: linear-gradient(90deg, #1b3021 25%, #27402c 50%, #1b3021 75%);
+  background-size: 200% 100%;
+}
+
+:global([data-theme="dark"] .skeleton-card) {
+  background: var(--surface);
+}
+
+:global(.card-row), :global(.skeleton-card) {
+  padding: 0.9rem 1rem;
+  border-color: var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface);
+}
+
+:global(.skeleton) {
+  background: linear-gradient(90deg, #e5ece6 25%, #f3f7f3 50%, #e5ece6 75%);
+}
+
+:global([data-theme="dark"] .panel), :global([data-theme="dark"] .metric-card), :global([data-theme="dark"] .ambiente-card), :global([data-theme="dark"] .card-row), :global([data-theme="dark"] .skeleton-card), :global([data-theme="dark"] .modal), :global([data-theme="dark"] .reserva-card), :global([data-theme="dark"] .reserva-item) {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+:global([data-theme="dark"] .skeleton) {
+  background: linear-gradient(90deg, #1a2d20 25%, #27402d 50%, #1a2d20 75%);
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+:local(.moduleScope) { --css-module-scope: 1; }
+

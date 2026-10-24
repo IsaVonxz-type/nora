@@ -1,0 +1,15 @@
+
+
+:global(.operaciones-grid) {
+  align-items: start;
+}
+:global(.operaciones-grid .cards-grid) { grid-template-columns: minmax(0, 1fr); }
+:global(.operaciones-grid .ambiente-card__meta) { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; }
+:global(.operaciones-grid .ambiente-card__meta-row) { display: grid; gap: 0.1rem; }
+:global(.operaciones-grid .ambiente-card__meta-row strong) { max-width: none; text-align: left; }
+
+@media (max-width: 600px) {
+  :global(.operaciones-grid .ambiente-card__meta) { grid-template-columns: 1fr 1fr; }
+}
+:local(.moduleScope) { --css-module-scope: 1; }
+

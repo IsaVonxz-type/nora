@@ -1,0 +1,30 @@
+
+:global(.avail-results-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+:global(.avail-count) {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+:global(.section-heading), :global(.avail-results-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+
+  :global(.section-heading--filters), :global(.avail-results-header) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+:local(.moduleScope) { --css-module-scope: 1; }
+
