@@ -2,9 +2,13 @@ import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { RequireAuth, RequireRole } from "../components/auth/RequireAuth";
 import { MainLayout } from "../components/layout/MainLayout";
+import { isDemoActive } from "../services/demoSession";
 
 const LoginPage = lazy(() =>
   import("../pages/LoginPage").then((module) => ({ default: module.LoginPage })),
+);
+const DemoEntry = lazy(() =>
+  import("../pages/DemoEntry").then((module) => ({ default: module.DemoEntry })),
 );
 const LandingPage = lazy(() =>
   import("../pages/LandingPage").then((module) => ({ default: module.LandingPage })),
@@ -47,8 +51,9 @@ function RouteFallback() {
 
 function workspaceRoutes() {
   return <Route path="/">
-    <Route index element={<LandingPage />} />
-    <Route path="login" element={<LoginPage />} />
+    <Route index element={isDemoActive() ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+    <Route path="login" element={isDemoActive() ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+    <Route path="demo" element={<DemoEntry />} />
     <Route element={<RequireAuth />}>
       <Route element={<MainLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
@@ -66,7 +71,7 @@ function workspaceRoutes() {
         </Route>
       </Route>
     </Route>
-    <Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="*" element={<Navigate to={isDemoActive() ? "/dashboard" : "/"} replace />} />
   </Route>;
 }
 

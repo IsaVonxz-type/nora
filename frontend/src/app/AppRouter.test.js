@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuth } from "../hooks/useAuth";
+import { isDemoActive } from "../services/demoSession";
 import { AppRouter } from "./AppRouter";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
@@ -16,6 +18,7 @@ vi.mock("../pages/SedesPage", () => ({ SedesPage: () => createElement("h1", null
 describe("AppRouter", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     useAuth.mockReturnValue({ user: { id: 1, nombre: "Ana Pérez", rol: "Admin" }, role: "admin", isAuthenticated: true, isLoading: false, logout: vi.fn() });
   });
   it("shows the public landing and opens login from its CTA", async () => {
@@ -24,6 +27,19 @@ describe("AppRouter", () => {
     await screen.findByRole("heading", { name: /Cada espacio, en su momento/ });
     fireEvent.click(screen.getAllByRole("link", { name: /Iniciar sesión/ })[0]);
     await screen.findByRole("heading", { name: "Nora" });
+  });
+  it("starts a disposable demo workspace and exits back to the public landing", async () => {
+    const queryClient = new QueryClient();
+    render(createElement(QueryClientProvider, { client: queryClient },
+      createElement(MemoryRouter, { initialEntries: ["/demo"] }, createElement(AppRouter))));
+    await screen.findByRole("heading", { name: "Contenido dashboard" });
+    expect(isDemoActive()).toBe(true);
+    expect(screen.getByRole("status").textContent).toContain("Los cambios se reinician");
+
+    fireEvent.click(screen.getByRole("button", { name: "Salir de la demo" }));
+
+    await screen.findByRole("heading", { name: /Cada espacio, en su momento/ });
+    expect(isDemoActive()).toBe(false);
   });
   it("keeps workspace shell and unprefixed navigation between lazy pages", async () => {
     render(createElement(MemoryRouter, { initialEntries: ["/dashboard"] }, createElement(AppRouter)));

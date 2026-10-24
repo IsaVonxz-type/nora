@@ -1,0 +1,34 @@
+.page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.panel {
+  display: grid;
+  width: min(100%, 32rem);
+  gap: 16px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.panel h1 {
+  font-size: 24px;
+  line-height: 32px;
+  text-wrap: balance;
+}
+
+.panel p {
+  color: var(--muted);
+  line-height: 24px;
+  text-wrap: pretty;
+}
+
+.panel a {
+  justify-self: start;
+}

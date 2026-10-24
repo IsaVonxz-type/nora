@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getProfile, loginRequest, logoutRequest } from "../services/authService";
+import { demoUser, endDemoSession, isDemoActive } from "../services/demoSession";
 import {
   advanceSessionGeneration,
   clearStoredUser,
@@ -13,9 +14,11 @@ const handledStorageEvents = new WeakMap();
 
 export function useAuth() {
   const queryClient = useQueryClient();
+  const demoActive = isDemoActive();
   const profileQuery = useQuery({
-    queryKey: ["profile"],
-    queryFn: getProfile,
+    queryKey: demoActive ? ["profile", "demo"] : ["profile"],
+    queryFn: demoActive ? async () => demoUser : getProfile,
+    initialData: demoActive ? demoUser : undefined,
     retry: false,
     staleTime: 30_000,
   });
@@ -24,12 +27,14 @@ export function useAuth() {
   // On network/5xx errors keep the stored session — only clear on an explicit 401
   // (getProfile returns null on 401, so profileQuery.data === null means "not authed").
   const user = useMemo(() => {
+    if (demoActive) return profileQuery.data ?? demoUser;
     if (!profileQuery.isFetched) return getStoredUser();
     if (profileQuery.isError) return getStoredUser();
     return profileQuery.data ?? null;
-  }, [profileQuery.isFetched, profileQuery.isError, profileQuery.data]);
+  }, [demoActive, profileQuery.isFetched, profileQuery.isError, profileQuery.data]);
 
   useEffect(() => {
+    if (demoActive) return;
     if (profileQuery.data) {
       setStoredUser(profileQuery.data);
       return;
@@ -41,7 +46,7 @@ export function useAuth() {
       queryClient.removeQueries({ predicate: ({ queryKey }) => queryKey[0] !== "profile" });
       queryClient.getMutationCache().clear();
     }
-  }, [profileQuery.data, profileQuery.isFetched, profileQuery.isError, queryClient]);
+  }, [demoActive, profileQuery.data, profileQuery.isFetched, profileQuery.isError, queryClient]);
 
   useEffect(() => {
     const expire = () => {
@@ -52,7 +57,16 @@ export function useAuth() {
       queryClient.setQueryData(["profile"], null);
     };
     window.addEventListener("app:session-expired", expire);
-    return () => window.removeEventListener("app:session-expired", expire);
+    const endDemo = () => {
+      advanceSessionGeneration();
+      void queryClient.cancelQueries();
+      queryClient.clear();
+    };
+    window.addEventListener("app:demo-ended", endDemo);
+    return () => {
+      window.removeEventListener("app:session-expired", expire);
+      window.removeEventListener("app:demo-ended", endDemo);
+    };
   }, [queryClient]);
 
   useEffect(() => {
@@ -74,18 +88,27 @@ export function useAuth() {
 
   const login = async ({ email, password }) => {
     const data = await loginRequest({ email, password });
+    const activeDemo = isDemoActive();
+    const profileKey = activeDemo ? ["profile", "demo"] : ["profile"];
     advanceSessionGeneration();
     await queryClient.cancelQueries();
     queryClient.removeQueries({ predicate: ({ queryKey }) => queryKey[0] !== "profile" });
     queryClient.getMutationCache().clear();
-    if (data?.user) {
+    if (data?.user && !activeDemo) {
       setStoredUser(data.user);
     }
-    queryClient.setQueryData(["profile"], data?.user ?? null);
+    queryClient.setQueryData(profileKey, data?.user ?? null);
     return data;
   };
 
   const logout = async () => {
+    if (isDemoActive()) {
+      endDemoSession();
+      advanceSessionGeneration();
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      return;
+    }
     try {
       await logoutRequest();
     } finally {

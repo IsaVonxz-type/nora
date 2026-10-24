@@ -20,6 +20,7 @@ vi.mock("./session", async (importOriginal) => ({
 }));
 
 import { advanceSessionGeneration, clearStoredUser } from "./session";
+import { endDemoSession, startDemoSession } from "./demoSession";
 import { httpClient } from "./httpClient";
 
 const mock = new MockAdapter(httpClient);
@@ -43,12 +44,22 @@ describe("httpClient interceptor", () => {
 
   afterEach(() => {
     mock.reset();
+    endDemoSession();
   });
 
   it("passes successful responses through", async () => {
     mock.onGet("/api/ambientes").reply(200, [{ id: 1 }]);
     const { data } = await httpClient.get("/api/ambientes");
     expect(data).toEqual([{ id: 1 }]);
+  });
+
+  it("uses the in-memory adapter and never reaches HTTP while demo is active", async () => {
+    expect(startDemoSession()).toBe(true);
+
+    await expect(httpClient.get("/api/not-a-route")).rejects.toMatchObject({
+      response: { status: 404, data: { message: "Ruta no disponible en la demo" } },
+    });
+    expect(mock.history.get).toHaveLength(0);
   });
 
   it.each([200, 401])("discards late %s responses from the previous session without expiring the new session", async (status) => {

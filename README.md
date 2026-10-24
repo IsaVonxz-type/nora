@@ -2,7 +2,9 @@
 
 # Nora
 
-**Espacios en su momento.** Una aplicación para consultar disponibilidad, organizar reservas y coordinar la operación de espacios compartidos.
+**Espacios en su momento.** Nora es una aplicación web para coordinar espacios compartidos desde una sola instalación. Reúne sedes y horarios, disponibilidad, reservas, calendario, entregas y devoluciones, mantenimiento, gestión de usuarios y analíticas en un mismo espacio de trabajo.
+
+Incluye una demo pública interactiva con datos sintéticos. Se puede probar sin cuenta ni base de datos; los cambios son temporales y no llegan a la instalación real.
 
 Nora funciona como **una sola instalación**: todas las sedes y usuarios pertenecen al mismo sistema. No incluye selección de instituciones, dominios por organización, membresías ni aislamiento multi-tenant.
 
@@ -122,9 +124,21 @@ pnpm run dev
 - Interfaz: `http://localhost:5173`.
 - API: `http://localhost:3000/api`.
 - Vite reenvía `/api` al backend local.
-- Landing: `/`; acceso: `/login`.
+- Landing: `/`; demo pública: `/demo`; acceso del equipo: `/login`.
 
 Después del primer acceso, crea sedes, configura sus horarios semanales y agrega espacios. Los horarios iniciales están cerrados: configura días y horas reales antes de reservar o interpretar ocupación.
+
+## Demo pública
+
+Desde la landing, selecciona **Probar la demo** o abre `/demo`. Entra al workspace como `Admin` con sedes, ambientes, reservas, usuarios y operaciones sintéticos. No requiere cuenta, backend ni base de datos.
+
+Las solicitudes del workspace usan un adaptador local mientras la sesión demo está activa; no se envían a `/api` ni a PostgreSQL. Crear o editar reservas, sedes, ambientes, usuarios y bloqueos solo cambia datos en memoria. Los cambios se reinician al recargar o salir de la demo. El banner permanente permite salir. Cada pestaña mantiene su sesión separada.
+
+El contenido es ilustrativo y no representa datos ni resultados de clientes reales. La demo comparte las pantallas de Nora para que visitantes puedan explorar navegación, filtros y flujos principales sin guardar cambios en la instalación.
+
+## Contribuciones
+
+Este repositorio es público para consulta. Issues están desactivados y no se aceptan Pull Requests.
 
 ## Comandos
 

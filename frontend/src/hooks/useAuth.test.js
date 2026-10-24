@@ -20,6 +20,7 @@ vi.mock("../services/session", async (importOriginal) => ({
 
 import { getProfile, loginRequest, logoutRequest } from "../services/authService";
 import { getStoredUser, setStoredUser, clearStoredUser, getSessionGeneration } from "../services/session";
+import { endDemoSession, startDemoSession } from "../services/demoSession";
 import { useAuth } from "./useAuth";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -38,11 +39,13 @@ const STORED_USER = { id: 2, nombre: "Cached", email: "c@d.com", rol: "logistica
 
 describe("useAuth", () => {
   beforeEach(() => {
+    endDemoSession();
     vi.clearAllMocks();
     getStoredUser.mockReturnValue(null);
   });
 
   afterEach(() => {
+    endDemoSession();
     vi.restoreAllMocks();
   });
 
@@ -56,6 +59,22 @@ describe("useAuth", () => {
     expect(result.current.user).toEqual(STORED_USER);
     expect(result.current.isAuthenticated).toBe(true);
     expect(result.current.isLoading).toBe(true);
+  });
+
+  it("uses synthetic admin identity without reading or writing real session storage", async () => {
+    localStorage.setItem("user:v1", JSON.stringify(STORED_USER));
+    expect(startDemoSession()).toBe(true);
+
+    const { result, unmount } = renderHook(() => useAuth(), { wrapper: makeWrapper() });
+    await waitFor(() => expect(result.current.user).toMatchObject({ id: 9001, rol: "Admin" }));
+
+    expect(getProfile).not.toHaveBeenCalled();
+    expect(getStoredUser).not.toHaveBeenCalled();
+    expect(setStoredUser).not.toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem("user:v1"))).toEqual(STORED_USER);
+
+    unmount();
+    endDemoSession();
   });
 
   it("exposes fetched user and syncs to localStorage on success", async () => {

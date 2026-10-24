@@ -1,5 +1,7 @@
 import axios from "axios";
 import { clearStoredUser, getSessionGeneration } from "./session";
+import { demoApiAdapter } from "./demoApi";
+import { isDemoActive } from "./demoSession";
 
 const apiBaseURL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -14,6 +16,7 @@ export const httpClient = axios.create({
 
 httpClient.interceptors.request.use((config) => {
   config.sessionGeneration = getSessionGeneration();
+  if (isDemoActive()) config.adapter = demoApiAdapter;
   return config;
 });
 

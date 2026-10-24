@@ -270,6 +270,62 @@
   background: var(--bg);
 }
 
+.demoBanner {
+  position: sticky;
+  z-index: 15;
+  top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  border: 1px solid #c4d7fb;
+  border-radius: 12px;
+  color: #172554;
+  background: #eaf1ff;
+}
+
+.demoBanner > div {
+  display: grid;
+  gap: 4px;
+}
+
+.demoBanner > div > span {
+  color: #364d7c;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.demoBanner button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #879fce;
+  border-radius: 8px;
+  color: #172554;
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demoBanner button:hover {
+  background: #f5f7fc;
+}
+
+.demoBanner button:focus-visible {
+  outline: 3px solid #245dc1;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .demoBanner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 :global(.shell__sidebar .btn-ghost) {
   color: var(--sidebar-sub);
 }
@@ -965,4 +1021,3 @@
 }
 
 :local(.moduleScope) { --css-module-scope: 1; }
-

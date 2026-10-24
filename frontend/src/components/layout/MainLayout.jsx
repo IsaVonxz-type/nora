@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useDarkMode } from "../../hooks/useDarkMode";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
@@ -11,6 +11,8 @@ import controlsStyles from "../ui/Controls.module.css";
 import cardsStyles from "../ui/Cards.module.css";
 import reservationStyles from "../reservas/ReservationUI.module.css";
 import { brand } from "../../config/brand";
+import { endDemoSession, isDemoActive } from "../../services/demoSession";
+import { resetDemoData } from "../../services/demoApi";
 
 function NavIcon({ to }) {
   switch (to) {
@@ -149,6 +151,8 @@ export function MainLayout() {
   const { isDark, toggle } = useDarkMode();
   const toast = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
+  const demoActive = isDemoActive();
   const links = getLinksByRole(role);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorageState("sidebar-collapsed:v1", false);
@@ -167,6 +171,12 @@ export function MainLayout() {
   }, []);
 
   const handleLogout = () => {
+    if (demoActive) {
+      endDemoSession();
+      resetDemoData();
+      navigate("/", { replace: true });
+      return;
+    }
     void logout().catch(() => undefined);
   };
 
@@ -370,6 +380,15 @@ export function MainLayout() {
         tabIndex="-1"
         inert={isSidebarOpen}
       >
+        {demoActive && (
+          <div className={layoutStyles.demoBanner} role="status">
+            <div>
+              <strong>Estás en la demo de Nora</strong>
+              <span>Datos ficticios. Los cambios se reinician al salir o recargar.</span>
+            </div>
+            <button type="button" onClick={handleLogout}>Salir de la demo</button>
+          </div>
+        )}
         <header className="shell__workspace-bar">
           <div className="shell__breadcrumb">
             <span>Centro de operaciones</span>

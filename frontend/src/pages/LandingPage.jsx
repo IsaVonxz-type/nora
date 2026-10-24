@@ -214,10 +214,10 @@ export function LandingPage() {
               Consulta disponibilidad por sede, organiza reservas y sigue cada entrega desde una sola vista.
             </p>
             <div className="landing-hero__actions">
-              <Link className="landing-cta" to="/login">
-                Iniciar sesión <ArrowIcon />
+              <Link className="landing-cta" to="/demo">
+                Probar la demo <ArrowIcon />
               </Link>
-              <span>Ingresa con las credenciales de tu equipo</span>
+              <span>Sin registro. Datos ficticios que se reinician al salir.</span>
             </div>
             <div className="landing-proof" aria-label="Funciones disponibles">
               <span>Disponibilidad</span><i />
