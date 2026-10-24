@@ -18,7 +18,7 @@ import * as analyticsModel from "../models/analyticsModel.js";
 const SECRET = "test-secret-do-not-use-in-production";
 
 function makeToken(rol = "Admin") {
-  findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 1, nombre: "Test Admin", rol });
+  findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
   return jwt.sign({ id: 1, nombre: "Test Admin", rol }, SECRET, {
     expiresIn: "1h",
   });

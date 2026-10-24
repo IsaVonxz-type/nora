@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginPage } from "./LoginPage";
 import { useAuth } from "../hooks/useAuth";
-import { OrganizationProvider } from "../organizations/OrganizationContext";
 
 vi.mock("../hooks/useAuth", () => ({
   useAuth: vi.fn(),
@@ -56,19 +55,6 @@ describe("LoginPage", () => {
     useAuth.mockReturnValue({ isAuthenticated: false, login });
   });
 
-  it("submits the demo tenant and rejects another organization's return path", async () => {
-    login.mockResolvedValue({ user: { tenant_slug: "demo" } });
-    render(createElement(MemoryRouter, { initialEntries: [{ pathname: "/organizaciones/demo/login", state: { from: "/reservas" } }] },
-      createElement(OrganizationProvider, null, createElement(Routes, null,
-        createElement(Route, { path: "/organizaciones/demo/login", element: createElement(LoginPage) }),
-        createElement(Route, { path: "/organizaciones/demo/dashboard", element: createElement("p", null, "Demo dashboard") }),
-      )),
-    ));
-    fillCredentials("demo@example.test", "LocalDemo1!");
-    submitForm();
-    await screen.findByText("Demo dashboard");
-    expect(login).toHaveBeenCalledWith({ email: "demo@example.test", password: "LocalDemo1!", tenant_slug: "demo" });
-  });
 
   it("muestra errores de campos y atributos ARIA al enviar vacío", () => {
     renderLogin();

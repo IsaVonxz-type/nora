@@ -11,11 +11,11 @@ describe("SEOHead", () => {
     await waitFor(() => {
       expect(document.querySelector('link[rel="canonical"]')?.href).toBe(`${window.location.origin}/`);
       expect(document.querySelector('meta[property="og:image"]')?.content)
-        .toBe(`${window.location.origin}/img/trama-mark.svg`);
+        .toBe(`${window.location.origin}/img/nora-banner.png`);
     });
 
     const structuredData = JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent);
     expect(structuredData.url).toBe(`${window.location.origin}/`);
-    expect(structuredData.name).toBe("Trama");
+    expect(structuredData.name).toBe("Nora");
   });
 });

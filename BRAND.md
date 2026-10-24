@@ -1,13 +1,15 @@
-# Trama brand
+# Nora
 
-## Name
+**Nora — Espacios en su momento.** Nombre corto que evoca coordinación y hora, sin asociar el producto a una institución concreta. Su disponibilidad comercial y de dominio no ha sido verificada.
 
-**Trama** describes the connections between people, schedules and shared spaces.
+El símbolo es una N trazada como recorrido; un nodo verde marca el encuentro. Paleta: azul tinta `#172554`, papel `#F5F4EB`, verde `#B9EE72` y azul `#245DC1`.
 
-## Mark
+## Assets
 
-The logo at `frontend/public/img/trama-mark.svg` combines a simple woven grid with crossings highlighted in blue. It reads as coordination without implying a specific institution or industry.
+- `frontend/public/img/nora-mark.svg`: símbolo vectorial.
+- `frontend/public/img/nora-mark.png`: símbolo PNG de 512 x 512.
+- `frontend/public/img/nora-banner.png`: banner de 1600 x 640 para README y metadatos sociales.
 
-## Voice
+La marca compartida de la interfaz se configura en `frontend/src/config/brand.js`. Mantén los metadatos HTML y el manifest alineados.
 
-Clear, practical and organization-neutral. Use “espacios”, “sedes”, “reservas” and “organizaciones”. Avoid institutional or education-only language unless a tenant supplies it in its own content.
+Lenguaje claro en español, centrado en espacios, equipos, horarios y reservas. No inventar métricas, clientes ni testimonios.

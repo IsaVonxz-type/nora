@@ -1,28 +1,27 @@
-# Trama: guía técnica
+# Nora: guía técnica
 
-Trama es una aplicación multi organización para coordinar espacios físicos, reservas, disponibilidad, operación y analíticas.
+Nora coordina espacios, sedes, reservas, disponibilidad y operación en una sola instalación. Cada usuario tiene su rol en `usuarios`; no hay membresías ni selección de organización.
 
-## Arquitectura
+## Entradas y capas
 
-- `backend/app.js`: aplicación Express sin `listen()`.
-- `backend/dev-server.js`: servidor local y validación de entorno.
-- `frontend/src/main.jsx`: entrada de React.
-- `frontend/src/app/AppRouter.jsx`: rutas y control de acceso de interfaz.
-- `backend/src/routes/index.js`: montaje de rutas API.
-- `database/schema.sql` y `database/migrations/`: esquema y evolución de PostgreSQL.
+- `backend/app.js`: Express sin `listen()`; usado por tests y serverless.
+- `backend/dev-server.js`: carga `.env` e inicia desarrollo.
+- `frontend/src/main.jsx`: arranca React, router, consultas, SEO y notificaciones.
+- `frontend/src/app/AppRouter.jsx`: rutas y guardas de interfaz.
+- `backend/src/routes/index.js`: rutas de API.
+- `backend/src/controllers`, `services` y `models`: HTTP, negocio y SQL.
+- `backend/db/connection.js`: pool PostgreSQL y consultas.
 
-Los handlers de `api/` delegan en `backend/app.js`. Los cambios de API deben hacerse en los controladores y servicios backend, no en los wrappers serverless.
+Los wrappers `api/` delegan a Express. Cambia handlers backend, no wrappers, para modificar la API.
 
-## Tenancy y autorización
+## Seguridad y datos
 
-Cada organización mantiene membresías y roles por persona. Las comprobaciones backend usan la sesión verificada; el nombre o slug de la URL solo selecciona organización y nunca concede autorización. El aislamiento de datos se aplica con Row Level Security y `app.tenant_id` local a cada transacción.
+El JWT viaja en cookie HttpOnly. La versión de sesión en el usuario permite revocación tras cambios de rol, estado o contraseña. Las rutas backend verifican permisos aunque la interfaz también oculte acciones. CORS y CSRF validan orígenes exactos.
 
-Usa `backend/db/connection.js` para consultas. El trabajo fuera de una petición debe ejecutar `runWithTenant`. Consulta [TENANCY.md](TENANCY.md) y [ORGANIZATION_DOMAINS.md](ORGANIZATION_DOMAINS.md).
+Crear reservas mantiene una transacción con bloqueo `SELECT ... FOR UPDATE` para evitar solapamientos concurrentes. El historial registra creación, reprogramación, cancelación, entrega y devolución.
 
-## Desarrollo y validación
+## Base de datos
 
-Los comandos se documentan en el README. Las pruebas unitarias no necesitan una base de datos externa; las pruebas de integración requieren un PostgreSQL descartable configurado explícitamente.
+`database/schema.sql` contiene el esquema consolidado. Las migraciones `0000` a `0006` preparan una base nueva. Esta versión no convierte bases con el esquema multi-tenant anterior; usa una base independiente y revisa cualquier importación de datos.
 
-## Despliegue
-
-Vercel compila la SPA y enruta `/api/*` a Express. El build no aplica SQL. Aplica migraciones en la base destino antes de desplegar código que dependa de ellas y usa credenciales runtime sin `SUPERUSER` ni `BYPASSRLS`.
+No se ejecutan migraciones durante el build. Consulta [README](../README.md) para instalación, primer administrador, configuración, pruebas y despliegue.

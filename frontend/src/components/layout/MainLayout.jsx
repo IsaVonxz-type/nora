@@ -10,7 +10,7 @@ import layoutStyles from "./MainLayout.module.css";
 import controlsStyles from "../ui/Controls.module.css";
 import cardsStyles from "../ui/Cards.module.css";
 import reservationStyles from "../reservas/ReservationUI.module.css";
-import { useOrganization } from "../../organizations/OrganizationContext";
+import { brand } from "../../config/brand";
 
 function NavIcon({ to }) {
   switch (to) {
@@ -149,7 +149,6 @@ export function MainLayout() {
   const { isDark, toggle } = useDarkMode();
   const toast = useToast();
   const location = useLocation();
-  const organization = useOrganization();
   const links = getLinksByRole(role);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorageState("sidebar-collapsed:v1", false);
@@ -232,8 +231,8 @@ export function MainLayout() {
         </button>
 
         <div className="shell__brand">
-          <img className="shell__brand-logo" src={organization.logo} alt="" aria-hidden="true" />
-          <div className="shell__brand-name">{organization.name}</div>
+          <img className="shell__brand-logo" src={brand.logo} alt="" aria-hidden="true" />
+          <div className="shell__brand-name">{brand.name}</div>
         </div>
 
         <div className="shell__topbar-actions">
@@ -274,10 +273,10 @@ export function MainLayout() {
       >
         {/* Brand */}
         <div className="shell__brand shell__brand--sidebar">
-          <img className="shell__brand-logo" src={organization.logo} alt="" aria-hidden="true" />
+          <img className="shell__brand-logo" src={brand.logo} alt="" aria-hidden="true" />
           <div className="shell__brand-text">
-            <div className="shell__brand-name">{organization.name}</div>
-            <div className="shell__brand-sub">{organization.subtitle}</div>
+            <div className="shell__brand-name">{brand.name}</div>
+            <div className="shell__brand-sub">{brand.subtitle}</div>
           </div>
           <button
             className="shell__collapse-btn"
@@ -303,7 +302,7 @@ export function MainLayout() {
                 <span className="nav-group__label">{link.section}</span>
               ) : null}
               <NavLink
-                to={organization.path(link.to)}
+                to={link.to}
                 title={link.label}
                 onClick={closeSidebar}
                 className={({ isActive }) =>
@@ -360,11 +359,7 @@ export function MainLayout() {
         </div>
 
         <div className="shell__privacy-note">
-          {organization.slug === "demo" ? (
-            <a href={organization.path("/informacion")} className="shell__privacy-link">Sobre esta demo</a>
-          ) : (
-            <span className="shell__privacy-link">Consulta las políticas de tu organización</span>
-          )}
+          <span className="shell__privacy-link">Consulta las políticas de esta instalación</span>
         </div>
       </aside>
 
@@ -379,9 +374,9 @@ export function MainLayout() {
           <div className="shell__breadcrumb">
             <span>Centro de operaciones</span>
             <span aria-hidden="true">/</span>
-            <strong>{getPageTitle(location.pathname.slice(organization.base.length))}</strong>
+            <strong>{getPageTitle(location.pathname)}</strong>
           </div>
-          <QuickNavigation links={links.map((link) => ({ ...link, to: organization.path(link.to) }))} />
+          <QuickNavigation links={links} />
         </header>
         <div className="page-enter">
           <Suspense fallback={<section className="panel loading-panel" role="status" aria-busy="true">Cargando vista…</section>}>

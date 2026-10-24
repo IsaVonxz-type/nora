@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useOrganization } from "../organizations/OrganizationContext";
 
 export function useLocalStorageState(key, initialValue) {
-  const organization = useOrganization();
-  const storageKey = organization.slug === "default" ? key : `${organization.slug}:${key}`;
+  const storageKey = key;
   const [value, setValue] = useState(() => {
     try {
       const raw = localStorage.getItem(storageKey);

@@ -1,5 +1,4 @@
 import pkg from "pg";
-import { createTenantDatabase } from "./tenantDatabase.js";
 const { Pool } = pkg;
 
 let pool;
@@ -94,10 +93,8 @@ if (!global.pool) {
 
 pool = global.pool;
 
-const database = createTenantDatabase(pool);
-
 export async function query(text, params) {
-  return database.query(text, params);
+  return pool.query(text, params);
 }
 
-export default database;
+export default pool;

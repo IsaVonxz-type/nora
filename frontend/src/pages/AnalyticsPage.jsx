@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { fetchAnalytics, fetchSedes } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { SkeletonMetric } from "../components/ui/Skeleton";

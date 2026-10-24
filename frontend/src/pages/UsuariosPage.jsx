@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { httpClient } from "../services/httpClient";
 import { fetchUsersPage } from "../services/api";
 import { useAuth } from "../hooks/useAuth";

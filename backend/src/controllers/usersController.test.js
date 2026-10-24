@@ -19,7 +19,7 @@ import * as usersService from "../services/usersService.js";
 const SECRET = "test-secret-do-not-use-in-production";
 
 function makeToken(rol = "Admin") {
-  findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 1, nombre: "Test User", rol });
+  findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
   return jwt.sign({ id: 1, nombre: "Test User", rol }, SECRET, {
     expiresIn: "1h",
   });

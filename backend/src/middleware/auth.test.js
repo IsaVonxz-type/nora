@@ -16,7 +16,6 @@ vi.mock("../models/usersModel.js", () => ({ findUserSessionVersion: vi.fn() }));
 import { findUserSessionVersion } from "../models/usersModel.js";
 import { authenticate, authenticateOptional, allowRoles } from "../middleware/auth.js";
 import { AppError } from "../utils/errors.js";
-import { getTenantId } from "../tenancy/context.js";
 
 const SECRET = process.env.JWT_SECRET; // set by test/setup.js
 const PAYLOAD = { id: 1, rol: "admin", email: "a@b.com" };
@@ -35,41 +34,10 @@ function makeNext() {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 1, rol: "admin", nombre: "Ana" });
+  findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
 });
 
 describe("authenticate", () => {
-  it("uses verified membership tenant and role instead of request fields or stale claims", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, rol: "Instructor", nombre: "Ana" });
-    const req = makeReq({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) }, headers: { "x-tenant-id": "8" } });
-    req.body = { tenant_id: 8 };
-    const next = vi.fn(() => expect(getTenantId()).toBe(7));
-    await authenticate(req, {}, next);
-    expect(next).toHaveBeenCalledExactlyOnceWith();
-    expect(req.user).toMatchObject({ tenant_id: 7, rol: "Instructor" });
-    expect(getTenantId()).toBeUndefined();
-  });
-
-  it("rejects a session for missing or different membership", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 2, rol: "Admin" });
-    const next = makeNext();
-    await authenticate(makeReq({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) } }), {}, next);
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
-  });
-
-  it("rejects a session revoked only within its institution", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, membership_version: 1 });
-    const next = makeNext();
-    await authenticate(makeReq({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7, membership_version: 0 }) } }), {}, next);
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
-  });
-
-  it.each([null, 0, -1, "7", 1.2])("rejects malformed tenant claim %p", async (tenant_id) => {
-    const next = makeNext();
-    await authenticate(makeReq({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id }) } }), {}, next);
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 401 }));
-    expect(findUserSessionVersion).not.toHaveBeenCalled();
-  });
   it("rejects inactive accounts even with matching session version", async () => {
     findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: false });
     const next = makeNext();
@@ -100,7 +68,7 @@ describe("authenticate", () => {
     await authenticate(req, {}, next);
     expect(next).toHaveBeenCalledWith(); // no error argument
     expect(req.user).toMatchObject({ id: 1, rol: "admin" });
-    expect(findUserSessionVersion).toHaveBeenCalledExactlyOnceWith(1, undefined);
+    expect(findUserSessionVersion).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it("rejects Bearer header token — cookie-only auth enforced", () => {
@@ -130,14 +98,14 @@ describe("authenticate", () => {
   });
 
   it("accepts a matching nonzero version", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 2, tenant_id: 1, rol: "admin", nombre: "Ana" });
+    findUserSessionVersion.mockResolvedValue({ session_version: 2 });
     const next = makeNext();
     await authenticate(makeReq({ cookies: { token: makeToken({ ...PAYLOAD, session_version: 2 }) } }), {}, next);
     expect(next).toHaveBeenCalledExactlyOnceWith();
   });
 
   it("defaults users without a prior version to zero", async () => {
-    findUserSessionVersion.mockResolvedValue({ tenant_id: 1, rol: "admin", nombre: "Ana" });
+    findUserSessionVersion.mockResolvedValue({});
     const next = makeNext();
     await authenticate(makeReq({ cookies: { token: makeToken() } }), {}, next);
     expect(next).toHaveBeenCalledExactlyOnceWith();
@@ -218,43 +186,5 @@ describe("allowRoles", () => {
     allowRoles("admin")({}, {}, next);
     const err = next.mock.calls[0][0];
     expect(err.status).toBe(403);
-  });
-});
-
-describe("host institution enforcement", () => {
-  const mapped = (extra = {}) => ({ ...makeReq(extra), organization: { slug: "default" } });
-
-  it("rejects a session issued for another institution on a mapped host", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, rol: "Admin", nombre: "Ana", tenant_slug: "demo" });
-    const next = makeNext();
-    const req = mapped({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) } });
-    await authenticate(req, {}, next);
-    expect(next).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ status: 403, code: "TENANT_HOST_MISMATCH" }),
-    );
-    expect(getTenantId()).toBeUndefined();
-  });
-
-  it("accepts a session for the institution mapped to the host", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, rol: "Admin", nombre: "Ana", tenant_slug: "default" });
-    const next = vi.fn(() => expect(getTenantId()).toBe(7));
-    await authenticate(mapped({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) } }), {}, next);
-    expect(next).toHaveBeenCalledExactlyOnceWith();
-  });
-
-  it("treats a mismatched optional session as anonymous", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, rol: "Admin", nombre: "Ana", tenant_slug: "demo" });
-    const next = makeNext();
-    const req = mapped({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) } });
-    await authenticateOptional(req, {}, next);
-    expect(req.user).toBeNull();
-    expect(next).toHaveBeenCalledExactlyOnceWith();
-  });
-
-  it("keeps host-agnostic behavior without a mapped institution", async () => {
-    findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 7, rol: "Admin", nombre: "Ana", tenant_slug: "demo" });
-    const next = makeNext();
-    await authenticate(makeReq({ cookies: { token: makeToken({ ...PAYLOAD, tenant_id: 7 }) } }), {}, next);
-    expect(next).toHaveBeenCalledExactlyOnceWith();
   });
 });

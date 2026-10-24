@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { OrganizationLink as Link } from "../organizations/OrganizationNavigation";
+import { Link } from "react-router-dom";
 import { fetchAmbientes, fetchOperaciones, fetchReservas } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { SEOHead } from "../components/seo/SEOHead";

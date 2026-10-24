@@ -3,8 +3,8 @@ import express from "express";
 import cors from "cors";
 import request from "supertest";
 
-const canonicalOrigin = "https://trama-example.vercel.app";
-const previewHostname = "trama-preview-123.vercel.app";
+const canonicalOrigin = "https://nora-example.vercel.app";
+const previewHostname = "nora-preview-123.vercel.app";
 const previewOrigin = `https://${previewHostname}`;
 
 async function createOriginApp() {
@@ -27,7 +27,7 @@ describe("CORS and CSRF origin policy", () => {
     vi.stubEnv("VERCEL", "1");
     vi.stubEnv("VERCEL_ENV", "preview");
     vi.stubEnv("VERCEL_URL", previewHostname);
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "trama-example.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "nora-example.vercel.app");
     vi.stubEnv("CORS_ORIGIN", "");
   });
 

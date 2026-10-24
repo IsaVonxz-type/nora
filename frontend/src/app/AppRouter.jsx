@@ -2,9 +2,6 @@ import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { RequireAuth, RequireRole } from "../components/auth/RequireAuth";
 import { MainLayout } from "../components/layout/MainLayout";
-import { SEOHead } from "../components/seo/SEOHead";
-import { OrganizationProvider } from "../organizations/OrganizationContext";
-import { UNKNOWN_ORGANIZATION } from "../organizations/organizations";
 
 const LoginPage = lazy(() =>
   import("../pages/LoginPage").then((module) => ({ default: module.LoginPage })),
@@ -39,9 +36,6 @@ const AnalyticsPage = lazy(() =>
 const OperacionesPage = lazy(() =>
   import("../pages/OperacionesPage").then((module) => ({ default: module.OperacionesPage })),
 );
-const DemoInfoPage = lazy(() => import("../pages/DemoInfoPage").then((module) => ({ default: module.DemoInfoPage })));
-const OrganizationNotFoundPage = lazy(() => import("../pages/OrganizationNotFoundPage").then((module) => ({ default: module.OrganizationNotFoundPage })));
-const OrganizationUnavailablePage = lazy(() => import("../pages/OrganizationUnavailablePage").then((module) => ({ default: module.OrganizationUnavailablePage })));
 
 function RouteFallback() {
   return (
@@ -51,11 +45,10 @@ function RouteFallback() {
   );
 }
 
-function workspaceRoutes(base, entry) {
-  return <Route path={base || "/"} key={base || "default"}>
-    <Route index element={entry} />
+function workspaceRoutes() {
+  return <Route path="/">
+    <Route index element={<LandingPage />} />
     <Route path="login" element={<LoginPage />} />
-    {base && <Route path="informacion" element={<DemoInfoPage />} />}
     <Route element={<RequireAuth />}>
       <Route element={<MainLayout />}>
         <Route path="dashboard" element={<DashboardPage />} />
@@ -73,39 +66,16 @@ function workspaceRoutes(base, entry) {
         </Route>
       </Route>
     </Route>
-    <Route path="*" element={<Navigate to={base || "/"} replace />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Route>;
 }
 
-export function AppRouter({ hostResolution = null, onRetryHostResolution }) {
-  const pending = hostResolution?.status === "pending";
-  const notFound = hostResolution?.status === "not-found";
-  const unavailable = hostResolution?.status === "unavailable";
-
+export function AppRouter() {
   return (
-    <OrganizationProvider
-      hostOrganization={hostResolution?.organization ?? null}
-      organizationOverride={pending || notFound || unavailable ? UNKNOWN_ORGANIZATION : null}
-    >
       <Suspense fallback={<RouteFallback />}>
-        {pending ? (
-          <main id="main-content">
-            <SEOHead title="Conectando" noIndex />
-            <section className="panel loading-panel" role="status" aria-busy="true">
-              Resolviendo organización…
-            </section>
-          </main>
-        ) : notFound ? (
-          <OrganizationNotFoundPage />
-        ) : unavailable ? (
-          <OrganizationUnavailablePage onRetry={onRetryHostResolution} />
-        ) : (
           <Routes>
-            {workspaceRoutes("/organizaciones/demo", <LoginPage />)}
-            {workspaceRoutes("", <LandingPage />)}
+            {workspaceRoutes()}
           </Routes>
-        )}
       </Suspense>
-    </OrganizationProvider>
   );
 }

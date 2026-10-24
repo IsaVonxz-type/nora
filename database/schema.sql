@@ -1,27 +1,9 @@
-CREATE TABLE IF NOT EXISTS tenants (
-    id SERIAL PRIMARY KEY,
-    slug VARCHAR(63) UNIQUE NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
-    nombre VARCHAR(120) NOT NULL,
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-INSERT INTO tenants (slug, nombre) VALUES ('default', 'Organización principal') ON CONFLICT (slug) DO NOTHING;
-
-CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS INTEGER
-LANGUAGE sql STABLE AS $$
-    SELECT NULLIF(current_setting('app.tenant_id', true), '')::INTEGER
-$$;
-
 CREATE TABLE IF NOT EXISTS sedes (
     id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
-    nombre VARCHAR(50) NOT NULL,
+    nombre VARCHAR(50) UNIQUE NOT NULL,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (tenant_id, nombre),
-    UNIQUE (tenant_id, id)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -45,20 +27,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
 ALTER TABLE usuarios
 ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0 CHECK (session_version >= 0);
 
-CREATE TABLE IF NOT EXISTS tenant_memberships (
-    tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
-    user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT,
-    rol VARCHAR(20) NOT NULL CHECK (rol IN ('Admin', 'Logistica', 'Instructor')),
-    activo BOOLEAN NOT NULL DEFAULT TRUE,
-    session_version INTEGER NOT NULL DEFAULT 0 CHECK (session_version >= 0),
-    PRIMARY KEY (tenant_id, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_tenant_memberships_user ON tenant_memberships(user_id, tenant_id);
-
 CREATE TABLE IF NOT EXISTS ambientes (
     id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
     sede_id INTEGER NOT NULL REFERENCES sedes (id) ON DELETE RESTRICT,
     codigo VARCHAR(30) NOT NULL,
     capacidad INTEGER NOT NULL,
@@ -67,14 +37,11 @@ CREATE TABLE IF NOT EXISTS ambientes (
     estado BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (sede_id, codigo),
-    UNIQUE (tenant_id, id),
-    FOREIGN KEY (tenant_id, sede_id) REFERENCES sedes(tenant_id, id)
+    UNIQUE (sede_id, codigo)
 );
 
 CREATE TABLE IF NOT EXISTS reservas (
     id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
     ambiente_id INTEGER NOT NULL REFERENCES ambientes (id) ON DELETE CASCADE,
     creado_por_id INTEGER REFERENCES usuarios (id) ON DELETE SET NULL,
     fecha DATE NOT NULL,
@@ -98,9 +65,7 @@ CREATE TABLE IF NOT EXISTS reservas (
     usuario_devolucion VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CHECK (hora_fin > hora_inicio),
-    FOREIGN KEY (tenant_id, ambiente_id) REFERENCES ambientes(tenant_id, id),
-    FOREIGN KEY (tenant_id, creado_por_id) REFERENCES tenant_memberships(tenant_id, user_id)
+    CHECK (hora_fin > hora_inicio)
 );
 
 ALTER TABLE reservas
@@ -113,7 +78,6 @@ FROM usuarios u
 WHERE
     r.creado_por_id IS NULL
     AND r.creado_por = u.nombre
-    AND EXISTS (SELECT 1 FROM tenant_memberships m WHERE m.tenant_id = r.tenant_id AND m.user_id = u.id)
     AND (
         SELECT COUNT(*)
         FROM usuarios u2
@@ -157,7 +121,6 @@ ON rate_limit_entries (reset_at);
 
 CREATE TABLE IF NOT EXISTS bloqueos_ambiente (
     id SERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
     ambiente_id INTEGER NOT NULL REFERENCES ambientes (id) ON DELETE RESTRICT,
     motivo VARCHAR(500) NOT NULL CHECK (LENGTH(TRIM(motivo)) > 0),
     inicio TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -170,10 +133,7 @@ CREATE TABLE IF NOT EXISTS bloqueos_ambiente (
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     cerrado_en TIMESTAMPTZ,
     CHECK (fin > inicio),
-    CHECK ((activo AND cerrado_en IS NULL) OR (NOT activo AND cerrado_en IS NOT NULL)),
-    FOREIGN KEY (tenant_id, ambiente_id) REFERENCES ambientes(tenant_id, id),
-    FOREIGN KEY (tenant_id, creado_por_id) REFERENCES tenant_memberships(tenant_id, user_id),
-    FOREIGN KEY (tenant_id, cerrado_por_id) REFERENCES tenant_memberships(tenant_id, user_id)
+    CHECK ((activo AND cerrado_en IS NULL) OR (NOT activo AND cerrado_en IS NOT NULL))
 );
 
 CREATE INDEX IF NOT EXISTS idx_bloqueos_ambiente_activos
@@ -183,14 +143,12 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TR
 ALTER TABLE sedes ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS sede_horarios (
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
     sede_id INTEGER NOT NULL REFERENCES sedes(id) ON DELETE RESTRICT,
     dia_semana SMALLINT NOT NULL CHECK (dia_semana BETWEEN 0 AND 6),
     cerrado BOOLEAN NOT NULL DEFAULT TRUE,
     hora_apertura TIME,
     hora_cierre TIME,
     PRIMARY KEY (sede_id, dia_semana),
-    FOREIGN KEY (tenant_id, sede_id) REFERENCES sedes(tenant_id, id),
     CHECK (
         (cerrado AND hora_apertura IS NULL AND hora_cierre IS NULL)
         OR (NOT cerrado AND hora_apertura IS NOT NULL AND hora_cierre IS NOT NULL
@@ -198,13 +156,12 @@ CREATE TABLE IF NOT EXISTS sede_horarios (
     )
 );
 
-INSERT INTO sede_horarios (tenant_id, sede_id, dia_semana, cerrado)
-SELECT s.tenant_id, s.id, d, TRUE FROM sedes s CROSS JOIN generate_series(0, 6) d
+INSERT INTO sede_horarios (sede_id, dia_semana, cerrado)
+SELECT s.id, d, TRUE FROM sedes s CROSS JOIN generate_series(0, 6) d
 ON CONFLICT (sede_id, dia_semana) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS reserva_audit_log (
     id BIGSERIAL PRIMARY KEY,
-    tenant_id INTEGER NOT NULL DEFAULT current_tenant_id() REFERENCES tenants(id),
     reserva_id INTEGER NOT NULL,
     action VARCHAR(30) NOT NULL,
     actor_user_id INTEGER,
@@ -286,33 +243,3 @@ DROP TRIGGER IF EXISTS reservas_audit_change ON reservas;
 CREATE TRIGGER reservas_audit_change
 AFTER INSERT OR UPDATE ON reservas
 FOR EACH ROW EXECUTE FUNCTION log_reserva_audit_change();
-
-CREATE INDEX IF NOT EXISTS idx_ambientes_tenant_sede ON ambientes(tenant_id, sede_id);
-CREATE INDEX IF NOT EXISTS idx_reservas_tenant_fecha ON reservas(tenant_id, fecha, hora_inicio, id);
-CREATE INDEX IF NOT EXISTS idx_bloqueos_tenant_ambiente ON bloqueos_ambiente(tenant_id, ambiente_id);
-CREATE INDEX IF NOT EXISTS idx_horarios_tenant_sede ON sede_horarios(tenant_id, sede_id);
-CREATE INDEX IF NOT EXISTS idx_audit_tenant_reserva ON reserva_audit_log(tenant_id, reserva_id, changed_at DESC, id DESC);
-
-CREATE OR REPLACE FUNCTION assign_reserva_audit_tenant() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-    NEW.tenant_id := (SELECT tenant_id FROM reservas WHERE id = NEW.reserva_id);
-    RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS reserva_audit_tenant ON reserva_audit_log;
-CREATE TRIGGER reserva_audit_tenant BEFORE INSERT ON reserva_audit_log
-FOR EACH ROW EXECUTE FUNCTION assign_reserva_audit_tenant();
-
-DO $$
-DECLARE
-    table_name TEXT;
-BEGIN
-    FOREACH table_name IN ARRAY ARRAY['sedes', 'ambientes', 'reservas', 'bloqueos_ambiente', 'sede_horarios', 'reserva_audit_log'] LOOP
-        EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', table_name);
-        EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', table_name);
-        EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', table_name);
-        EXECUTE format('CREATE POLICY tenant_isolation ON %I USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id())', table_name);
-    END LOOP;
-END;
-$$;

@@ -1,19 +1,16 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { useOrganization } from "../../organizations/OrganizationContext";
-import { belongsToOrganization } from "../../organizations/organizations";
 
 export function RequireAuth() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const organization = useOrganization();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading && !isAuthenticated) {
     return <div className="panel loading-panel" role="status" aria-busy="true">Validando sesión…</div>;
   }
 
-  if (!isAuthenticated || !belongsToOrganization(user, organization)) {
-    return <Navigate to={organization.path("/login")} replace state={{ from: location.pathname }} />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return <Outlet />;
@@ -27,10 +24,9 @@ export function RequireAuth() {
  */
 export function RequireRole({ allowed }) {
   const { role } = useAuth();
-  const organization = useOrganization();
 
   if (!allowed.includes(role)) {
-    return <Navigate to={organization.path("/dashboard")} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;

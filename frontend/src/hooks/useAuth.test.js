@@ -206,8 +206,8 @@ describe("useAuth session cache isolation", () => {
     expect(client.getMutationCache().getAll()).toHaveLength(0);
   });
 
-  it("switches organization after a storage event without retaining private cache", async () => {
-    const demoUser = { ...STORED_USER, tenant_slug: "demo", tenant_id: 9 };
+  it("switches account after a storage event without retaining private cache", async () => {
+    const demoUser = { ...STORED_USER, id: 9, nombre: "Alex" };
     getStoredUser.mockReturnValue(demoUser);
     getProfile.mockResolvedValue(demoUser);
     const { result } = renderHook(() => useAuth(), { wrapper: makeWrapper(client) });

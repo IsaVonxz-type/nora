@@ -9,7 +9,7 @@ import { removeInvalidReservationStateDateIndex } from "../backend/src/utils/mig
 const { Client } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationDirectory = path.resolve(__dirname, "..", "database", "migrations");
-const migrationLockKey = "trama:migrations";
+const migrationLockKey = "nora:migrations";
 const baselineOnly = process.argv.includes("--baseline");
 
 function getClientOptions() {
@@ -36,7 +36,7 @@ function getClientOptions() {
     connectionTimeoutMillis: 10000,
     statement_timeout: 0,
     query_timeout: 0,
-    application_name: "trama-migrate",
+    application_name: "nora-migrate",
   };
 
   options.ssl = sslMode === "disable"

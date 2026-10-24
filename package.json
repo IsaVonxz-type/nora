@@ -1,5 +1,5 @@
 {
-  "name": "trama",
+  "name": "nora",
   "version": "2.0.0",
   "description": "Sistema web para gestion de ambientes, reservas y disponibilidad (Node.js + PostgreSQL + HTML/CSS/JS)",
   "main": "backend/dev-server.js",

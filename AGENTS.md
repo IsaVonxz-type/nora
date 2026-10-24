@@ -17,13 +17,12 @@
 - Frontend build: `pnpm run build:frontend`.
 - Apply database migrations only to an explicitly selected database: `pnpm run db:migrate`.
 
-## Data isolation
+## Application and data
 
-- Tenant memberships, not global identity roles, authorize requests.
-- Operational isolation uses forced PostgreSQL RLS and transaction-local `app.tenant_id`.
-- Use `backend/db/connection.js`; background work must use `runWithTenant`.
-- Runtime database roles must be `NOSUPERUSER NOBYPASSRLS`; migrations use separate administrative credentials.
-- The tenant-aware backend and migration `0007` require coordinated deployment.
+- Nora is a single installation with user roles stored in `usuarios.rol`.
+- Use `backend/db/connection.js` for database access.
+- Preserve atomic reservation transactions and session-version revocation.
+- Use a dedicated database. Do not connect this version to a database with the former multi-organization schema without a separately reviewed conversion.
 
 ## Frontend conventions
 

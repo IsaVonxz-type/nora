@@ -5,15 +5,6 @@ import bcrypt from "bcryptjs";
 
 // Mocks deben declararse antes de la importación de app
 vi.mock("../../db/connection.js", () => ({ query: vi.fn(), default: {} }));
-vi.mock("../middleware/organizationHost.js", () => ({
-  resolveOrganizationHost: (req, _res, next) => {
-    const host = String(req.headers?.host ?? "").split(":")[0];
-    req.requestHost = host || null;
-    req.organization = host === "demo.example.com" ? { slug: "demo" } : null;
-    req.isPlatformHostRequest = host !== "demo.example.com";
-    next();
-  },
-}));
 vi.mock("../services/authService.js", async (importOriginal) => {
   const original = await importOriginal();
   return {
@@ -44,12 +35,6 @@ beforeEach(() => {
 // ── POST /api/login ───────────────────────────────────────────────────────────
 
 describe("POST /api/login", () => {
-  it("passes the institution selector to credential validation", async () => {
-    authService.loginUser.mockResolvedValueOnce({ token: "test-token", user: { id: 1, tenant_id: 9 } });
-    const res = await request(app).post("/api/login").send({ email: "ana@example.test", password: PASSWORD, tenant_slug: "other" });
-    expect(res.status).toBe(200);
-    expect(authService.loginUser).toHaveBeenCalledWith("ana@example.test", PASSWORD, "other");
-  });
   it("retorna 400 cuando el servicio lanza AppError 400", async () => {
     authService.loginUser.mockRejectedValueOnce(
       Object.assign(new Error("Email y contraseña requeridos"), { status: 400, name: "AppError" }),
@@ -98,14 +83,13 @@ describe("GET /api/profile", () => {
   });
 
   it("retorna 200 con datos del usuario autenticado", async () => {
-    query.mockResolvedValueOnce({ rows: [{ session_version: 0, tenant_id: 1, nombre: "Test User", rol: "Instructor" }] });
+    query.mockResolvedValueOnce({ rows: [{ session_version: 0, activo: true }] });
     const res = await request(app)
       .get("/api/profile")
       .set("Cookie", `token=${makeToken("Instructor")}`);
 
     expect(res.status).toBe(200);
     expect(res.body.user).toMatchObject({ id: 1, nombre: "Test User", rol: "Instructor" });
-    expect(res.body.user.tenant_id).toBe(1);
   });
 
   it("retorna user null para una sesion revocada", async () => {
@@ -131,51 +115,5 @@ describe("POST /api/logout", () => {
     const res = await request(app).post("/api/logout");
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/sesion/i);
-  });
-});
-
-// ── POST /api/login en un dominio asignado a una institución ──────────────────
-
-describe("POST /api/login on a mapped institution host", () => {
-  it("authenticates against the institution of the domain without a selector", async () => {
-    authService.loginUser.mockResolvedValueOnce({ token: "jwt-token", user: { id: 1, tenant_slug: "demo" } });
-    const res = await request(app)
-      .post("/api/login")
-      .set("Host", "demo.example.com")
-      .send({ email: "ana@example.test", password: PASSWORD });
-
-    expect(res.status).toBe(200);
-    expect(authService.loginUser).toHaveBeenCalledExactlyOnceWith("ana@example.test", PASSWORD, "demo");
-  });
-
-  it("refuses a selector that contradicts the domain", async () => {
-    const res = await request(app)
-      .post("/api/login")
-      .set("Host", "demo.example.com")
-      .send({ email: "ana@example.test", password: PASSWORD, tenant_slug: "default" });
-
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe("TENANT_HOST_MISMATCH");
-    expect(authService.loginUser).not.toHaveBeenCalled();
-  });
-
-  it("keeps the selector working on the platform host", async () => {
-    authService.loginUser.mockResolvedValueOnce({ token: "jwt-token", user: { id: 1, tenant_id: 9 } });
-    const res = await request(app)
-      .post("/api/login")
-      .send({ email: "ana@example.test", password: PASSWORD, tenant_slug: "demo" });
-
-    expect(res.status).toBe(200);
-    expect(authService.loginUser).toHaveBeenCalledExactlyOnceWith("ana@example.test", PASSWORD, "demo");
-  });
-
-  it("defaults to the configured tenant without a selector or mapped domain", async () => {
-    authService.loginUser.mockResolvedValueOnce({ token: "jwt-token", user: { id: 1, tenant_id: 1 } });
-    const res = await request(app)
-      .post("/api/login")
-      .send({ email: "ana@example.test", password: PASSWORD });
-
-    expect(res.status).toBe(200);
-    expect(authService.loginUser).toHaveBeenCalledExactlyOnceWith("ana@example.test", PASSWORD, "default");
   });
 });

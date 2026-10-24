@@ -20,7 +20,7 @@ function getLocalDatabaseOptions() {
     password: decodeURIComponent(url.password),
     ssl: false,
     connectionTimeoutMillis: 5000,
-    application_name: "trama-local-demo-seed",
+    application_name: "nora-local-demo-seed",
   };
 }
 
@@ -35,7 +35,7 @@ function localIso(date, time) {
 async function findOrCreateSite(client, nombre) {
   const { rows } = await client.query(
     `INSERT INTO sedes (nombre, activo) VALUES ($1, TRUE)
-     ON CONFLICT (tenant_id, nombre) DO UPDATE SET activo=TRUE, updated_at=NOW()
+     ON CONFLICT (nombre) DO UPDATE SET activo=TRUE, updated_at=NOW()
      RETURNING id`,
     [nombre],
   );
@@ -127,11 +127,9 @@ async function seed() {
 
   try {
     await client.query("BEGIN");
-    await client.query("SELECT set_config('app.tenant_id', (SELECT id::text FROM tenants WHERE slug = $1), true)", [process.env.DEFAULT_TENANT_SLUG || "default"]);
     const admins = await client.query(
-      `SELECT u.id, u.nombre FROM usuarios u JOIN tenant_memberships m ON m.user_id = u.id
-       WHERE LOWER(TRIM(u.email))=$1 AND m.tenant_id=current_tenant_id()
-       AND m.rol='Admin' AND u.activo AND m.activo`,
+      `SELECT id, nombre FROM usuarios
+       WHERE LOWER(TRIM(email))=$1 AND rol='Admin' AND activo`,
       ["demo.admin@ambientes.local"],
     );
     if (!admins.rows.length) throw new Error("Local demo admin account is missing; create it before seeding");

@@ -72,8 +72,8 @@ export function useAuth() {
     return () => window.removeEventListener("storage", syncSession);
   }, [queryClient]);
 
-  const login = async ({ email, password, tenant_slug }) => {
-    const data = await loginRequest({ email, password, ...(tenant_slug ? { tenant_slug } : {}) });
+  const login = async ({ email, password }) => {
+    const data = await loginRequest({ email, password });
     advanceSessionGeneration();
     await queryClient.cancelQueries();
     queryClient.removeQueries({ predicate: ({ queryKey }) => queryKey[0] !== "profile" });

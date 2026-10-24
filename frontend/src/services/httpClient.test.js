@@ -101,7 +101,7 @@ describe("httpClient interceptor", () => {
     }
   });
 
-  it("failed organization login does not expire an existing session", async () => {
+  it("failed login does not expire an existing session", async () => {
     mock.onPost("/api/login").reply(401);
     await expect(httpClient.post("/api/login", {})).rejects.toBeTruthy();
     expect(clearStoredUser).not.toHaveBeenCalled();

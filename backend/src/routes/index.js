@@ -9,13 +9,11 @@ import analyticsRoutes from "./analytics.routes.js";
 import operacionesRoutes from "./operaciones.routes.js";
 import mantenimientoRoutes from "./mantenimiento.routes.js";
 import healthRoutes from "./health.routes.js";
-import organizationRoutes from "./organization.routes.js";
 
 const router = Router();
 
 router.use(healthRoutes);
 router.use(authRoutes);            // POST /login, GET /profile, POST /logout
-router.use("/organization", organizationRoutes);
 router.use("/ambientes", ambientesRoutes);
 router.use("/sedes", sedesRoutes);
 router.use("/reservas", reservasRoutes);

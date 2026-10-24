@@ -17,26 +17,6 @@ beforeEach(() => {
 });
 
 describe("authService.loginUser", () => {
-  it.each([null, 7, {}, "", "Other", "../other", "a".repeat(64)])("rejects invalid tenant slug %p", async (slug) => {
-    await expect(loginUser("ana@example.test", PASSWORD, slug)).rejects.toMatchObject({ status: 400 });
-    expect(usersModel.findUserByEmail).not.toHaveBeenCalled();
-  });
-
-  it("requires a membership in the requested institution even with valid credentials elsewhere", async () => {
-    usersModel.findUserByEmail.mockResolvedValueOnce(undefined);
-    await expect(loginUser("ana@example.test", PASSWORD, "other")).rejects.toMatchObject({ status: 401 });
-    expect(usersModel.findUserByEmail).toHaveBeenCalledWith("ana@example.test", "other");
-  });
-
-  it("signs the verified tenant and membership version", async () => {
-    usersModel.findUserByEmail.mockResolvedValueOnce({
-      id: 4, nombre: "Ana", email: "ana@example.test", rol: "Instructor",
-      tenant_id: 9, membership_version: 3, password_hash: PASSWORD_HASH, activo: true,
-    });
-    const result = await loginUser("ana@example.test", PASSWORD, "other");
-    expect(jwt.verify(result.token, process.env.JWT_SECRET)).toMatchObject({ tenant_id: 9, membership_version: 3, rol: "Instructor" });
-    expect(result.user.tenant_id).toBe(9);
-  });
   it("rejects inactive accounts with correct credentials", async () => {
     usersModel.findUserByEmail.mockResolvedValueOnce({
       id: 1, nombre: "Ana", email: "ana@example.test", password_hash: PASSWORD_HASH,
@@ -76,7 +56,6 @@ describe("authService.loginUser", () => {
       email: "ana@example.test",
       password_hash: PASSWORD_HASH,
       rol: "Admin",
-      tenant_id: 1,
     });
     await expect(loginUser("ana@example.test", "wrong")).rejects.toMatchObject({
       status: 401,
@@ -90,7 +69,6 @@ describe("authService.loginUser", () => {
       email: "ana@example.test",
       password_hash: PASSWORD_HASH,
       rol: "Admin",
-      tenant_id: 1,
     });
 
     const result = await loginUser("ana@example.test", PASSWORD);
@@ -116,7 +94,6 @@ describe("authService.loginUser", () => {
       password_hash: PASSWORD_HASH,
       rol: "Admin",
       session_version: 3,
-      tenant_id: 1,
     });
     const result = await loginUser("ana@example.test", PASSWORD);
     expect(jwt.verify(result.token, process.env.JWT_SECRET).session_version).toBe(3);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { OrganizationLink as Link } from "../organizations/OrganizationNavigation";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { httpClient } from "../services/httpClient";

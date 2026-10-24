@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { fetchSedes, fetchAmbientes } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { SkeletonCard } from "../components/ui/Skeleton";

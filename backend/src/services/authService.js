@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { DEFAULT_TENANT_SLUG, JWT_SECRET, IS_PROD } from "../config/env.js";
+import { JWT_SECRET, IS_PROD } from "../config/env.js";
 import { findUserByEmail } from "../models/usersModel.js";
 import { AppError } from "../utils/errors.js";
 
@@ -22,36 +22,32 @@ export function buildCookieOptions() {
  * Valida credenciales y devuelve token JWT + datos públicos del usuario.
  * Lanza AppError si las credenciales son inválidas.
  */
-export async function loginUser(email, password, tenantSlug = DEFAULT_TENANT_SLUG) {
+export async function loginUser(email, password) {
   const normalizedEmail = String(email || "").trim();
   if (!normalizedEmail || typeof password !== "string" || !password) {
     throw new AppError("Email y contraseña requeridos", 400);
   }
 
-  if (typeof tenantSlug !== "string" || tenantSlug.length > 63 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(tenantSlug)) {
-    throw new AppError("Institucion invalida", 400);
-  }
-
-  const user = await findUserByEmail(normalizedEmail, tenantSlug);
+  const user = await findUserByEmail(normalizedEmail);
   if (!user) {
     await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
     throw new AppError("Credenciales invalidas", 401);
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid || user.activo === false || !Number.isSafeInteger(user.tenant_id) || user.tenant_id < 1) {
+  if (!valid || user.activo === false) {
     throw new AppError("Credenciales invalidas", 401);
   }
 
   const token = jwt.sign(
     { id: user.id, nombre: user.nombre, rol: user.rol, session_version: user.session_version ?? 0,
-      tenant_id: user.tenant_id, membership_version: user.membership_version ?? 0 },
+    },
     JWT_SECRET,
     { expiresIn: TOKEN_TTL },
   );
 
   return {
     token,
-    user: { id: user.id, nombre: user.nombre, rol: user.rol, email: user.email, tenant_id: user.tenant_id, tenant_slug: tenantSlug },
+    user: { id: user.id, nombre: user.nombre, rol: user.rol, email: user.email },
   };
 }

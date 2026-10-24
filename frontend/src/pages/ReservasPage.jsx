@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { httpClient } from "../services/httpClient";
 import { fetchAmbientes, fetchReservasPage } from "../services/api";
 import { useAuth } from "../hooks/useAuth";

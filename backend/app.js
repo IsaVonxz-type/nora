@@ -11,7 +11,6 @@ import { errorHandler, notFoundHandler } from "./src/middleware/errorHandler.js"
 import { requestId } from "./src/middleware/requestId.js";
 import { apiLimiter } from "./src/middleware/rateLimiter.js";
 import { csrfOriginCheck } from "./src/middleware/csrfOrigin.js";
-import { resolveOrganizationHost } from "./src/middleware/organizationHost.js";
 import {
     allowedOrigins,
     ENABLE_COMPRESSION,
@@ -34,7 +33,6 @@ app.set("etag", "weak");
 // CSP is managed via vercel.json for the CDN layer; disable helmet's CSP to
 // avoid double-setting conflicting directives. All other helmet defaults apply.
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(resolveOrganizationHost);
 
 // ── CORS ────────────────────────────────────────────────────────────────────
 app.use(

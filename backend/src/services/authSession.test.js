@@ -8,7 +8,6 @@ import { query } from "../../db/connection.js";
 import { loginUser } from "./authService.js";
 import { updatePassword } from "../models/usersModel.js";
 import { authenticate } from "../middleware/auth.js";
-import { runWithTenant } from "../tenancy/context.js";
 
 const oldPassword = "OldPassword1!";
 const newPassword = "NewPassword2!";
@@ -17,12 +16,12 @@ let user;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  user = { id: 1, tenant_id: 1, nombre: "Ana", email: "ana@example.test", rol: "Admin", password_hash: originalHash, session_version: 0 };
+  user = { id: 1, nombre: "Ana", email: "ana@example.test", rol: "Admin", password_hash: originalHash, session_version: 0 };
   query.mockImplementation(async (sql, values) => {
-    if (sql.startsWith("SELECT u.session_version")) {
+    if (sql.startsWith("SELECT session_version")) {
       return { rows: [{ ...user }] };
     }
-    if (sql.startsWith("SELECT u.id")) {
+    if (sql.startsWith("SELECT id, nombre, email")) {
       return { rows: [{ ...user }] };
     }
     if (sql.startsWith("UPDATE usuarios")) {
@@ -45,7 +44,7 @@ describe("password-change session revocation", () => {
     expect(initialNext).toHaveBeenCalledExactlyOnceWith();
 
     query.mockClear();
-    await runWithTenant(1, () => updatePassword(user.id, newPassword));
+    await updatePassword(user.id, newPassword);
     expect(query).toHaveBeenCalledOnce();
     expect(user.session_version).toBe(1);
     expect(await bcrypt.compare(newPassword, user.password_hash)).toBe(true);

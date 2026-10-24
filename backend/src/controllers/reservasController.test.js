@@ -26,7 +26,7 @@ import * as reservasService from "../services/reservasService.js";
 const SECRET = "test-secret-do-not-use-in-production";
 
 function makeToken(rol = "Admin", id = 1) {
-  findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 1, nombre: "Test User", rol });
+  findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
   return jwt.sign({ id, nombre: "Test User", rol }, SECRET, {
     expiresIn: "1h",
   });

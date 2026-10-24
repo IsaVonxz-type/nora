@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { httpClient } from "../services/httpClient";
 import { useToast } from "../components/ui/Toast";

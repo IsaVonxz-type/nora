@@ -1,25 +1,23 @@
 import { useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { SEOHead } from "../components/seo/SEOHead";
 import pageStyles from "./LoginPage.module.css";
 import controlsStyles from "../components/ui/Controls.module.css";
-import { useOrganization } from "../organizations/OrganizationContext";
-import { belongsToOrganization, getLoginTarget } from "../organizations/organizations";
+import { brand } from "../config/brand";
+import { getLoginTarget } from "../utils/loginTarget";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, login } = useAuth();
-  const organization = useOrganization();
-  const isDemo = organization.slug === "demo";
+  const { isAuthenticated, login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isAuthenticated && belongsToOrganization(user, organization)) {
-    return <Navigate to={organization.path("/dashboard")} replace />;
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   const onSubmit = async (event) => {
@@ -37,8 +35,8 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({ email: form.email, password: form.password, ...(isDemo ? { tenant_slug: organization.slug } : {}) });
-      const target = getLoginTarget(location.state?.from, organization);
+      await login({ email: form.email, password: form.password });
+      const target = getLoginTarget(location.state?.from);
       navigate(target, { replace: true });
     } catch (submitError) {
       setError(
@@ -52,23 +50,21 @@ export function LoginPage() {
   };
 
   return (
-    <div className={`auth-shell ${pageStyles.moduleScope} ${controlsStyles.moduleScope} ${isDemo ? pageStyles.demoShell : ""}`}>
+    <div className={`auth-shell ${pageStyles.moduleScope} ${controlsStyles.moduleScope}`}>
       <SEOHead
         title="Iniciar sesión"
-        description="Accede a Trama para consultar disponibilidad, organizar reservas y coordinar espacios compartidos."
+        description="Accede a Nora para consultar disponibilidad, organizar reservas y coordinar espacios compartidos."
       />
       <div className="auth-layout">
         <form className="auth-card" onSubmit={onSubmit}>
           <div className="auth-card__intro">
-            <img className="auth-logo" src={organization.logo} alt={organization.name} width="48" height="48" />
-            <h1>{organization.name}</h1>
+            <img className="auth-logo" src={brand.logo} alt={brand.name} width="48" height="48" />
+            <h1>{brand.name}</h1>
             <p className="subtle">
-              {isDemo ? "Accede a tu organización de demostración." : "Ingresa para gestionar reservas y ambientes."}
+              Ingresa para gestionar reservas y espacios.
             </p>
           </div>
 
-          {isDemo && <p className={pageStyles.demoNotice}>Datos de ejemplo, espacios propios. Esta demo no comparte registros con otras organizaciones.</p>}
-          {isAuthenticated && !belongsToOrganization(user, organization) && <p role="status" className="subtle">Tienes otra organización abierta. Al ingresar cambiarás la sesión de este navegador.</p>}
 
           <label className="field-label" htmlFor="email">
             Correo electrónico
@@ -118,16 +114,16 @@ export function LoginPage() {
             {isSubmitting ? "Ingresando…" : "Ingresar al sistema"}
           </button>
 
-          {isDemo ? <p className="auth-privacy">Usa la cuenta de demostración configurada para este entorno. <Link to={organization.path("/informacion")}>Sobre esta demo</Link></p> : <p className="auth-privacy">Al iniciar sesión, aceptas las políticas de uso y privacidad definidas por tu organización.</p>}
+          <p className="auth-privacy">Consulta las políticas de uso y privacidad con la administración de esta instalación.</p>
         </form>
 
-        <aside className={`auth-aside ${isDemo ? pageStyles.demoAside : ""}`}>
+        <aside className="auth-aside">
           <div className="auth-aside__brand">
-            <img src={organization.logo} alt={organization.name} />
-            <span>{isDemo ? "Espacios compartidos, una sola agenda" : "Gestión de espacios compartidos"}</span>
+            <img src={brand.logo} alt={brand.name} />
+            <span>Gestión de espacios compartidos</span>
           </div>
           <div className="auth-aside__copy">
-            <p className="auth-aside__headline">{isDemo ? "El lugar correcto. A la hora acordada." : "Espacios listos para enseñar."}</p>
+            <p className="auth-aside__headline">Haz lugar a lo que sigue.</p>
             <p>
               Consulta ambientes, ordena reservas y mantén cada jornada en movimiento desde un solo lugar.
             </p>
@@ -138,8 +134,8 @@ export function LoginPage() {
             <li>Seguimiento de entregas y devoluciones</li>
           </ul>
           <div className="auth-aside__stamp" aria-hidden="true">
-              <strong>{isDemo ? "Espacio" : "Trama"}</strong>
-              <span>{isDemo ? "Demostración con datos de ejemplo" : "Cada espacio, en su lugar"}</span>
+              <strong>{brand.name}</strong>
+              <span>Cada espacio, en su lugar</span>
           </div>
         </aside>
       </div>

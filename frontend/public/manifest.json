@@ -1,6 +1,6 @@
 {
-  "name": "Trama",
-  "short_name": "Trama",
+  "name": "Nora",
+  "short_name": "Nora",
   "description": "Coordina espacios compartidos, disponibilidad y reservas.",
   "start_url": "/login",
   "display": "standalone",
@@ -9,7 +9,7 @@
   "lang": "es-CO",
   "icons": [
     {
-      "src": "/img/trama-mark.svg",
+      "src": "/img/nora-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { SEOHead } from "../components/seo/SEOHead";
 import styles from "./LandingPage.module.css";
 
-const tagline = "Cada ambiente disponible acerca una jornada de formación bien organizada.";
+const tagline = "Cada espacio en su momento. Cada equipo en el lugar correcto.";
 
 function ArrowIcon() {
   return (
@@ -104,7 +104,7 @@ function TaglineReveal() {
           </span>
         ))}
       </p>
-      <span className="landing-tagline__mark" aria-hidden="true">TRAMA / ESPACIOS</span>
+      <span className="landing-tagline__mark" aria-hidden="true">NORA / ESPACIOS</span>
     </section>
   );
 }
@@ -186,13 +186,14 @@ export function LandingPage() {
   return (
     <div className={styles.page}>
       <SEOHead
-        title="Gestión de ambientes de formación"
+        title="Espacios y reservas, en su momento"
         description="Consulta disponibilidad, organiza reservas y coordina espacios compartidos desde una sola plataforma."
       />
+      <a className="landing-skip" href="#main-content">Saltar al contenido principal</a>
       <header className="landing-header">
-        <Link className="landing-brand" to="/" aria-label="Trama, inicio">
-          <img src="/img/trama-mark.svg" alt="" width="44" height="44" />
-          <span><strong>Trama</strong><small>Gestión de espacios</small></span>
+        <Link className="landing-brand" to="/" aria-label="Nora, inicio">
+          <img src="/img/nora-mark.svg" alt="" width="44" height="44" />
+          <span><strong>Nora</strong><small>Espacios en su momento</small></span>
         </Link>
         <nav className="landing-nav" aria-label="Navegación de la página">
           <a href="#funciones">Funciones</a>
@@ -207,16 +208,16 @@ export function LandingPage() {
       <main className="landing-main" id="main-content">
         <section className="landing-hero" aria-labelledby="landing-title">
           <div className="landing-hero__copy">
-            <p className="landing-kicker"><span /> Plataforma de ambientes de formación</p>
-            <h1 id="landing-title">Más tiempo para formar. <span>Menos vueltas para encontrar espacio.</span></h1>
+            <p className="landing-kicker"><span /> Para quienes coordinan espacios y equipos</p>
+            <h1 id="landing-title">Cada espacio, en su momento. <span>Cada jornada, en orden.</span></h1>
             <p className="landing-hero__description">
-              Consulta disponibilidad por sede, organiza reservas y acompaña cada jornada desde un solo lugar.
+              Consulta disponibilidad por sede, organiza reservas y sigue cada entrega desde una sola vista.
             </p>
             <div className="landing-hero__actions">
               <Link className="landing-cta" to="/login">
                 Iniciar sesión <ArrowIcon />
               </Link>
-              <span>Acceso con credenciales institucionales</span>
+              <span>Ingresa con las credenciales de tu equipo</span>
             </div>
             <div className="landing-proof" aria-label="Funciones disponibles">
               <span>Disponibilidad</span><i />
@@ -227,7 +228,7 @@ export function LandingPage() {
           <div className="landing-hero__visual" data-landing-reveal>
             <span className="landing-visual-caption">UNA VISTA DE LA JORNADA</span>
             <SchedulePreview />
-            <span className="landing-visual-orbit" aria-hidden="true">TRAMA</span>
+            <span className="landing-visual-orbit" aria-hidden="true">NORA</span>
           </div>
           <a className="landing-scroll" href="#funciones"><span /> Explora la plataforma</a>
         </section>
@@ -295,10 +296,10 @@ export function LandingPage() {
         </section>
 
         <section className="landing-final" aria-labelledby="final-title">
-          <span className="landing-final__index">TRAMA / ESPACIOS</span>
+          <span className="landing-final__index">NORA / ESPACIOS</span>
           <div>
             <p className="landing-section__eyebrow">Tu jornada empieza aquí</p>
-            <h2 id="final-title">Encuentra el espacio. Enfócate en enseñar.</h2>
+            <h2 id="final-title">Encuentra el espacio. Haz lugar a lo que sigue.</h2>
           </div>
           <Link className="landing-cta landing-cta--light" to="/login">
             Iniciar sesión <ArrowIcon />
@@ -307,13 +308,13 @@ export function LandingPage() {
       </main>
 
       <footer className="landing-footer">
-        <Link className="landing-brand landing-brand--footer" to="/" aria-label="Trama, inicio">
-          <img src="/img/trama-mark.svg" alt="" width="36" height="36" />
-          <span><strong>Trama</strong><small>Gestión de espacios</small></span>
+        <Link className="landing-brand landing-brand--footer" to="/" aria-label="Nora, inicio">
+          <img src="/img/nora-mark.svg" alt="" width="36" height="36" />
+          <span><strong>Nora</strong><small>Espacios en su momento</small></span>
         </Link>
-        <p>Herramientas para coordinar espacios de formación.</p>
-        <Link to="/login">Acceso de organizaciones</Link>
-        <span>Reservas, disponibilidad y operación</span>
+        <p>Un lugar para coordinar los espacios de tu equipo.</p>
+        <Link to="/login">Acceso para tu equipo</Link>
+        <span>Políticas de uso y privacidad: consúltalas con la administración de Nora.</span>
       </footer>
     </div>
   );

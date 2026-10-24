@@ -38,7 +38,7 @@ const SECRET = "test-secret-do-not-use-in-production";
 const roles = ["Admin", "Logistica", "Instructor"];
 
 function token(rol) {
-  findUserSessionVersion.mockResolvedValue({ session_version: 0, tenant_id: 1, nombre: `Test ${rol}`, rol });
+  findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
   return jwt.sign({ id: 1, nombre: `Test ${rol}`, rol }, SECRET, { expiresIn: "1h" });
 }
 

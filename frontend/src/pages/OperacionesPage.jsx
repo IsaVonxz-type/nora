@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "react-router-dom";
-import { OrganizationNavigate as Navigate } from "../organizations/OrganizationNavigation";
+import { Navigate } from "react-router-dom";
 import { httpClient } from "../services/httpClient";
 import { fetchOperaciones } from "../services/api";
 import { invalidateReservationQueries } from "../services/reservationQueries";
