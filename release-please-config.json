@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "nora",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        { "type": "json", "path": "frontend/package.json", "jsonpath": "$.version" }
+      ],
+      "changelog-sections": [
+        { "type": "feat", "section": "Nuevas funciones" },
+        { "type": "fix", "section": "Correcciones" },
+        { "type": "perf", "section": "Rendimiento" },
+        { "type": "revert", "section": "Reversiones" },
+        { "type": "docs", "section": "Documentación" },
+        { "type": "refactor", "section": "Refactorización", "hidden": true },
+        { "type": "test", "section": "Pruebas", "hidden": true },
+        { "type": "build", "section": "Compilación", "hidden": true },
+        { "type": "ci", "section": "Integración continua", "hidden": true },
+        { "type": "chore", "section": "Mantenimiento", "hidden": true }
+      ]
+    }
+  }
+}
