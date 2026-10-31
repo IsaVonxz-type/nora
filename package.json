@@ -17,7 +17,7 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "lint": "eslint backend frontend/src frontend/vite.config.js api scripts eslint.config.js --no-inline-config --max-warnings 0",
     "test:integration": "node --test backend/integration/postgres.test.mjs",
-    "audit:dependencies": "pnpm audit --prod --audit-level high && pnpm --dir frontend audit --prod --audit-level high",
+    "audit:dependencies": "pnpm audit --audit-level high && pnpm --dir frontend audit --audit-level high",
     "test:backend": "vitest run --config backend/vitest.config.js",
     "test:backend:watch": "vitest --config backend/vitest.config.js"
   },

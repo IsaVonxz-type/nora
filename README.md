@@ -162,7 +162,7 @@ Este repositorio es público para consulta. Issues están desactivados y no se a
 | `pnpm run test:backend` | Pruebas unitarias backend sin base externa |
 | `pnpm --dir frontend test` | Pruebas de interfaz |
 | `pnpm run lint` | ESLint |
-| `pnpm run audit:dependencies` | Auditoría de dependencias de producción |
+| `pnpm run audit:dependencies` | Auditoría de dependencias de producción y desarrollo; falla con avisos de severidad alta o crítica |
 | `pnpm run build:frontend` | Compila SPA en `frontend/dist` |
 | `pnpm start` | Sirve API y SPA compilada |
 | `pnpm run test:smoke` | Arranca servidor y comprueba endpoints básicos |
