@@ -62,6 +62,19 @@ describe("usersService.createUser", () => {
     });
   });
 
+  it.each([
+    [undefined],
+    [[]],
+    [{ nombre: 5, email: "ana@example.test", contraseña: "Password1!", rol: "Admin" }],
+    [{ nombre: "Ana", email: ["a@b.co"], contraseña: "Password1!", rol: "Admin" }],
+    [{ nombre: "x".repeat(121), email: "ana@example.test", contraseña: "Password1!", rol: "Admin" }],
+    [{ nombre: "Ana", email: `${"a".repeat(116)}@b.co`, contraseña: "Password1!", rol: "Admin" }],
+    [{ nombre: "Ana", email: "ana@example.test", contraseña: 12345678901, rol: "Admin" }],
+    [{ nombre: "Ana", email: "ana@example.test", contraseña: `Aa1!${"a".repeat(69)}`, rol: "Admin" }],
+  ])("lanza AppError 400 con tipos o longitudes inválidos: %j", async (input) => {
+    await expect(usersService.createUser(input)).rejects.toMatchObject({ status: 400 });
+  });
+
   it("lanza AppError 400 con email inválido", async () => {
     await expect(
       usersService.createUser({ ...validData, email: "no-es-email" }),

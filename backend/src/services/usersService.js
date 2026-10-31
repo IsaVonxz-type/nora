@@ -7,7 +7,7 @@ import {
   setUsuarioActivo,
 } from "../models/usersModel.js";
 import { AppError } from "../utils/errors.js";
-import { validatePositiveId } from "../utils/validation.js";
+import { requireJsonObject, validatePositiveId } from "../utils/validation.js";
 
 const VALID_ROLES = ["Admin", "Logistica", "Instructor"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -20,7 +20,15 @@ export const PASSWORD_RULES = [
   { key: "symbol", label: "Al menos un símbolo (!@#$%^&*...)", test: (p) => /[^A-Za-z0-9]/.test(p) },
 ];
 
+const MAX_PASSWORD_BYTES = 72;
+
 function validatePassword(contraseña) {
+  if (typeof contraseña !== "string") {
+    throw new AppError("La contraseña debe ser texto", 400);
+  }
+  if (Buffer.byteLength(contraseña, "utf8") > MAX_PASSWORD_BYTES) {
+    throw new AppError(`La contraseña no puede superar ${MAX_PASSWORD_BYTES} bytes`, 400);
+  }
   const failed = PASSWORD_RULES.filter((r) => !r.test(contraseña));
   if (failed.length > 0) {
     throw new AppError(
@@ -34,14 +42,22 @@ export async function getUsers(filters) {
   return listUsuariosModel(filters);
 }
 
-export async function createUser({ nombre, email, contraseña, rol }) {
+export async function createUser(data) {
+  const { nombre, email, contraseña, rol } = requireJsonObject(data);
   if (!nombre || !email || !contraseña || !rol) {
     throw new AppError(
       "Campos requeridos: nombre, email, contraseña, rol",
       400,
     );
   }
-  const normalizedEmail = String(email).trim().toLowerCase();
+  if (typeof nombre !== "string" || typeof email !== "string" || typeof rol !== "string") {
+    throw new AppError("nombre, email y rol deben ser texto", 400);
+  }
+  const normalizedName = nombre.trim();
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedName || normalizedName.length > 120 || normalizedEmail.length > 120) {
+    throw new AppError("Nombre y email válidos son requeridos (máximo 120 caracteres)", 400);
+  }
   if (!EMAIL_RE.test(normalizedEmail)) {
     throw new AppError("Formato de email inválido", 400);
   }
@@ -54,7 +70,7 @@ export async function createUser({ nombre, email, contraseña, rol }) {
   }
 
   try {
-    return await createUsuarioModel({ nombre, email: normalizedEmail, contraseña, rol });
+    return await createUsuarioModel({ nombre: normalizedName, email: normalizedEmail, contraseña, rol });
   } catch (err) {
     if (err.code === "23505") {
       throw new AppError("El email ya está registrado", 409);

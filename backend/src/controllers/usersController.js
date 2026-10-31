@@ -46,7 +46,7 @@ export const create = asyncHandler(async (req, res) => {
 
 export const changePassword = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { newPassword } = req.body;
+  const { newPassword } = requireJsonObject(req.body);
   await usersService.changePassword(id, newPassword);
   res.json({ message: "Contraseña actualizada correctamente" });
 });
