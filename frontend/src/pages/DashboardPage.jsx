@@ -5,7 +5,7 @@ import { fetchAmbientes, fetchOperaciones, fetchReservas } from "../services/api
 import { useAuth } from "../hooks/useAuth";
 import { SEOHead } from "../components/seo/SEOHead";
 import { SkeletonCard } from "../components/ui/Skeleton";
-import { getOperationalAlert } from "./OperacionesPage";
+import { getOperationalAlert } from "../utils/operationalAlert";
 import { formatDateFromObj, formatDateDisplay, formatTimeSlice, getOperationalStatus, getStatusClass } from "../utils/formatters";
 import styles from "./DashboardPage.module.css";
 

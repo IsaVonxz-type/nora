@@ -82,7 +82,7 @@ export async function parseCookies(req, res) {
   await runMiddleware(req, res, cookie);
 }
 
-export async function parseBody(req, res) {
+export async function parseBody(req, _res) {
   if (req.body && typeof req.body === "object") {
     return;
   }

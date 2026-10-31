@@ -14,7 +14,7 @@ async function createOriginApp() {
   app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(csrfOriginCheck);
   app.all("/probe", (req, res) => res.sendStatus(200));
-  app.use((error, req, res, next) => {
+  app.use((error, req, res, _next) => {
     res.status(error.status || 500).json({ message: error.message });
   });
   return { app, allowedOrigins };

@@ -5,7 +5,8 @@ import { MemoryRouter } from "react-router-dom";
 import MockAdapter from "axios-mock-adapter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "../services/httpClient";
-import { getOperationalAlert, OperacionesPage } from "./OperacionesPage";
+import { OperacionesPage } from "./OperacionesPage";
+import { getOperationalAlert } from "../utils/operationalAlert";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: () => ({ role: "logistica" }) }));
 vi.mock("../components/seo/SEOHead", () => ({ SEOHead: () => null }));

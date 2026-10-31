@@ -28,6 +28,7 @@ export default [
       "no-setter-return": "error",
       "no-this-before-super": "error",
       "no-unexpected-multiline": "error",
+      "no-unused-vars": ["error", { varsIgnorePattern: "^[A-Z_]", argsIgnorePattern: "^_", caughtErrors: "none" }],
       "no-unreachable": "error",
       "no-unsafe-finally": "error",
       "no-unsafe-negation": "error",

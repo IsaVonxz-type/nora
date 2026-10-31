@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { httpClient } from "../../services/httpClient";
 import { useToast } from "../ui/Toast";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { extractErrorMessage } from "../../utils/formatters";
-
-const EMPTY_FORM = {
-  sede_id: "",
-  codigo: "",
-  capacidad: "",
-  dotacion: "",
-  ubicacion: "",
-  estado: true,
-};
 
 export function AmbienteEditModal({ ambiente, sedes, onClose }) {
   const queryClient = useQueryClient();
@@ -36,15 +28,7 @@ export function AmbienteEditModal({ ambiente, sedes, onClose }) {
 
   const initialFocusRef = useFocusTrap(modalRef);
 
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const savedCssText = document.body.style.cssText;
-    document.body.style.cssText = `${savedCssText};overflow:hidden;position:fixed;top:-${scrollY}px;width:100%`;
-    return () => {
-      document.body.style.cssText = savedCssText;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
+  useBodyScrollLock();
 
   const updateMutation = useMutation({
     mutationFn: async (payload) => {

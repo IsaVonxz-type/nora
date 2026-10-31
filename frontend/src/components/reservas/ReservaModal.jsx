@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import {
   formatTime12h as formatTime,
@@ -65,17 +66,7 @@ export function ReservaModal({
     [reservas, selectedReservaId],
   );
 
-  // Bloquear scroll del body
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const savedCssText = document.body.style.cssText;
-    document.body.style.cssText = `${savedCssText};overflow:hidden;position:fixed;top:-${scrollY}px;width:100%`;
-
-    return () => {
-      document.body.style.cssText = savedCssText;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
+  useBodyScrollLock();
 
   const handleBackdropClick = (e) => {
     if (e.target === backdropRef.current) onClose();
