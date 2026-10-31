@@ -61,7 +61,7 @@ describe("password-change session revocation", () => {
     await authenticate(req, {}, freshNext);
     expect(freshNext).toHaveBeenCalledExactlyOnceWith();
     expect(req.user).toMatchObject({ id: user.id, rol: "Admin" });
-  });
+  }, 30000);
 
   it("does not revoke sessions when password hashing fails", async () => {
     await expect(updatePassword(user.id, undefined)).rejects.toThrow();

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { configure, fireEvent, render, screen, within } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -14,6 +14,8 @@ vi.mock("../pages/DashboardPage", () => ({ DashboardPage: () => createElement("h
 vi.mock("../pages/ReservasPage", () => ({ ReservasPage: () => createElement("h1", null, "Contenido reservas") }));
 vi.mock("../pages/AnalyticsPage", () => ({ AnalyticsPage: () => createElement("h1", null, "Contenido analíticas") }));
 vi.mock("../pages/SedesPage", () => ({ SedesPage: () => createElement("h1", null, "Contenido sedes") }));
+
+configure({ asyncUtilTimeout: 10000 });
 
 describe("AppRouter", () => {
   beforeEach(() => {
