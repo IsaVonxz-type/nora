@@ -244,6 +244,42 @@ test("disposable CI PostgreSQL migrations and reservation transactions", {
     }
   });
 
+  await context.test("analytics utilization counts eligible rooms per site and day inside one snapshot", async () => {
+    const { getAnalyticsData } = await import("../src/models/analyticsModel.js");
+    const site = (await pool.query("INSERT INTO sedes (nombre) VALUES ('Analytics CI') RETURNING id")).rows[0].id;
+    await pool.query(
+      "INSERT INTO sede_horarios (sede_id, dia_semana, cerrado, hora_apertura, hora_cierre) SELECT $1, d, false, '08:00', '18:00' FROM generate_series(0, 6) d",
+      [site],
+    );
+    const rooms = (await pool.query(
+      `INSERT INTO ambientes (sede_id, codigo, capacidad, ubicacion, estado) VALUES
+         ($1, 'AN-A', 10, 'x', true), ($1, 'AN-B', 10, 'x', true), ($1, 'AN-OFF', 10, 'x', false), ($1, 'AN-ZERO', 0, 'x', true)
+       RETURNING id, codigo`,
+      [site],
+    )).rows;
+    const room = (code) => rooms.find((row) => row.codigo === code).id;
+    const booking = (code, date, from, to, state = "Reservado") => pool.query(
+      "INSERT INTO reservas (ambiente_id, fecha, hora_inicio, hora_fin, estado, creado_por) VALUES ($1, $2, $3, $4, $5, 'CI')",
+      [room(code), date, from, to, state],
+    );
+    await booking("AN-A", "2030-06-03", "09:00", "11:00");
+    await booking("AN-A", "2030-06-03", "10:00", "12:00", "Cancelado");
+    await booking("AN-OFF", "2030-06-03", "09:00", "17:00");
+    await pool.query(
+      "INSERT INTO bloqueos_ambiente (ambiente_id, motivo, inicio, fin, creado_por) VALUES ($1, 'CI', '2030-06-04 12:00', '2030-06-04 14:00', 'CI')",
+      [room("AN-B")],
+    );
+
+    const result = await getAnalyticsData({ start: "2030-06-03", end: "2030-06-04", sedeId: site });
+
+    assert.equal(result.utilizacion.horasDisponibles, 38);
+    assert.equal(result.utilizacion.horasReservadasEnHorario, 2);
+    assert.equal(result.utilizacion.horasMantenimiento, 2);
+    assert.equal(result.utilizacion.diasAmbienteSinHorario, 0);
+    assert.ok(Math.abs(result.utilizacion.porcentajeUtilizacion - 200 / 38) < 1e-9);
+    assert.equal(result.metricas.totalAmbientesActivos, "3");
+  });
+
   await context.test("simultaneous overlap on empty date commits exactly one reservation", async () => {
     const results = await Promise.all(Array.from({ length: 6 }, () => insertReservaAtomically(payload("2030-01-01"))));
     assert.equal(results.filter(Boolean).length, 1);

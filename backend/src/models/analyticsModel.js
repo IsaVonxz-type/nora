@@ -1,4 +1,39 @@
-import { query } from "../../db/connection.js";
+import pool from "../../db/connection.js";
+
+function serialize(client) {
+  let tail = Promise.resolve();
+  let aborted = false;
+  const run = (text, params) => {
+    const result = tail.then(() => {
+      if (aborted) throw new Error("Consulta cancelada tras un fallo previo");
+      return client.query(text, params);
+    });
+    tail = result.catch(() => { aborted = true; });
+    return result;
+  };
+  run.abortAndSettle = () => {
+    aborted = true;
+    return tail;
+  };
+  return run;
+}
+
+async function withSnapshot(callback) {
+  const client = await pool.connect();
+  const run = serialize(client);
+  try {
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const result = await callback(run);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await run.abortAndSettle();
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 /**
  * Builds a WHERE clause + params array for analytics queries.
@@ -115,36 +150,50 @@ function mergeIntervals(intervals) {
   return merged;
 }
 
+/**
+ * Room-hour utilization. Every room of a site shares the site's weekly hours, so
+ * windows carry one row per site and day with the number of eligible rooms
+ * (`ambientes`). Only room-days that have bookings or maintenance are examined
+ * individually; the rest contribute `ambientes * (closing - opening)` seconds.
+ */
 export function computeUtilization(windows, reservations, maintenance = []) {
-  const bookings = new Map();
-  for (const reservation of reservations) {
-    const key = `${reservation.ambiente_id}-${dateKey(reservation.fecha)}`;
-    const intervals = bookings.get(key) || [];
-    intervals.push([seconds(reservation.hora_inicio), seconds(reservation.hora_fin)]);
-    bookings.set(key, intervals);
-  }
-
   let availableSeconds = 0;
   let bookedSeconds = 0;
   let maintenanceSeconds = 0;
   let missingDays = 0;
-  const blocks = new Map();
-  for (const block of maintenance) {
-    const key = `${block.ambiente_id}-${dateKey(block.fecha)}`;
-    const intervals = blocks.get(key) || [];
-    intervals.push([Number(block.inicio_segundos), Number(block.fin_segundos)]);
-    blocks.set(key, intervals);
-  }
+
+  const openHours = new Map();
   for (const window of windows) {
+    const rooms = Number(window.ambientes);
     if (window.dia_semana == null) {
-      missingDays += 1;
+      missingDays += rooms;
       continue;
     }
     if (window.cerrado) continue;
     const opening = seconds(window.hora_apertura);
     const closing = seconds(window.hora_cierre);
-    const key = `${window.ambiente_id}-${dateKey(window.fecha)}`;
-    const blockedIntervals = mergeIntervals((blocks.get(key) || [])
+    openHours.set(`${window.sede_id}-${dateKey(window.fecha)}`, { opening, closing });
+    availableSeconds += rooms * (closing - opening);
+  }
+
+  const roomDays = new Map();
+  const roomDay = (row) => {
+    const date = dateKey(row.fecha);
+    const key = `${row.ambiente_id}-${date}`;
+    if (!roomDays.has(key)) roomDays.set(key, { hours: openHours.get(`${row.sede_id}-${date}`), bookings: [], blocks: [] });
+    return roomDays.get(key);
+  };
+  for (const reservation of reservations) {
+    roomDay(reservation).bookings.push([seconds(reservation.hora_inicio), seconds(reservation.hora_fin)]);
+  }
+  for (const block of maintenance) {
+    roomDay(block).blocks.push([Number(block.inicio_segundos), Number(block.fin_segundos)]);
+  }
+
+  for (const { hours, bookings, blocks } of roomDays.values()) {
+    if (!hours) continue;
+    const { opening, closing } = hours;
+    const blockedIntervals = mergeIntervals(blocks
       .map(([from, to]) => [Math.max(opening, from), Math.min(closing, to)])
       .filter(([from, to]) => to > from));
     const availableIntervals = [];
@@ -152,12 +201,12 @@ export function computeUtilization(windows, reservations, maintenance = []) {
     for (const [from, to] of blockedIntervals) {
       if (from > cursor) availableIntervals.push([cursor, from]);
       maintenanceSeconds += to - from;
+      availableSeconds -= to - from;
       cursor = to;
     }
     if (cursor < closing) availableIntervals.push([cursor, closing]);
     for (const [openingFrom, openingTo] of availableIntervals) {
-      availableSeconds += openingTo - openingFrom;
-      const intervals = mergeIntervals((bookings.get(key) || [])
+      const intervals = mergeIntervals(bookings
         .map(([from, to]) => [Math.max(openingFrom, from), Math.min(openingTo, to)])
         .filter(([from, to]) => to > from));
       bookedSeconds += intervals.reduce((total, [from, to]) => total + to - from, 0);
@@ -179,22 +228,25 @@ export function computeUtilization(windows, reservations, maintenance = []) {
   };
 }
 
-async function getUtilization({ start, end, sedeId }) {
+async function getUtilization(q, { start, end, sedeId }) {
   if (!start || !end) return null;
   const params = [start, end, sedeId ?? null];
   const [windows, reservations, maintenance] = await Promise.all([
-    query(
-      `SELECT a.id AS ambiente_id, d.fecha::date AS fecha,
-              h.dia_semana, h.cerrado, h.hora_apertura, h.hora_cierre
-       FROM ambientes a JOIN sedes s ON s.id = a.sede_id
+    q(
+      `SELECT s.id AS sede_id, d.fecha::date AS fecha, h.dia_semana, h.cerrado,
+              h.hora_apertura, h.hora_cierre, eligible.ambientes
+       FROM (SELECT a.sede_id, COUNT(*)::int AS ambientes
+             FROM ambientes a
+             WHERE a.estado = TRUE AND a.capacidad > 0
+             GROUP BY a.sede_id) eligible
+       JOIN sedes s ON s.id = eligible.sede_id
        CROSS JOIN generate_series($1::date::timestamp, $2::date::timestamp, INTERVAL '1 day') d(fecha)
        LEFT JOIN sede_horarios h ON h.sede_id = s.id AND h.dia_semana = EXTRACT(DOW FROM d.fecha)
-       WHERE a.estado = TRUE AND s.activo = TRUE AND a.capacidad > 0
-         AND ($3::integer IS NULL OR s.id = $3)`,
+       WHERE s.activo = TRUE AND ($3::integer IS NULL OR s.id = $3)`,
       params,
     ),
-    query(
-      `SELECT r.ambiente_id, r.fecha, r.hora_inicio, r.hora_fin
+    q(
+      `SELECT s.id AS sede_id, r.ambiente_id, r.fecha, r.hora_inicio, r.hora_fin
        FROM reservas r JOIN ambientes a ON a.id = r.ambiente_id
        JOIN sedes s ON s.id = a.sede_id
        WHERE r.fecha BETWEEN $1::date AND $2::date AND r.estado <> 'Cancelado'
@@ -202,8 +254,8 @@ async function getUtilization({ start, end, sedeId }) {
          AND ($3::integer IS NULL OR s.id = $3)`,
       params,
     ),
-    query(
-      `SELECT b.ambiente_id, d.fecha::date AS fecha,
+    q(
+      `SELECT s.id AS sede_id, b.ambiente_id, d.fecha::date AS fecha,
               EXTRACT(EPOCH FROM (GREATEST(b.inicio, d.fecha) - d.fecha)) AS inicio_segundos,
               EXTRACT(EPOCH FROM (LEAST(
                 CASE WHEN b.activo THEN b.fin ELSE LEAST(b.fin, b.cerrado_en AT TIME ZONE 'America/Bogota') END,
@@ -222,7 +274,11 @@ async function getUtilization({ start, end, sedeId }) {
   return computeUtilization(windows.rows, reservations.rows, maintenance.rows);
 }
 
-export async function getAnalyticsData({ start, end, sedeId }) {
+export function getAnalyticsData(filters) {
+  return withSnapshot((q) => collectAnalytics(q, filters));
+}
+
+async function collectAnalytics(q, { start, end, sedeId }) {
   const currentFilter = buildFilter({ start, end, sedeId, excludeCancelled: true });
   const currentMetricsFilter = buildFilter({ start, end, sedeId, excludeCancelled: false });
   const previousRange = getPreviousRange(start, end);
@@ -233,7 +289,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
     ? buildFilter({ ...previousRange, sedeId, excludeCancelled: false })
     : null;
 
-  const topAmbientesPromise = query(
+  const topAmbientesPromise = q(
     `SELECT a.id as ambiente_id, a.codigo, s.nombre as sede,
             COUNT(*) as total_reservas,
             COALESCE(SUM(EXTRACT(EPOCH FROM (r.hora_fin::time - r.hora_inicio::time)) / 3600), 0) as total_horas
@@ -247,7 +303,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
     currentFilter.params,
   );
 
-  const topHorasPromise = query(
+  const topHorasPromise = q(
     `SELECT EXTRACT(HOUR FROM r.hora_inicio::time) as hora,
             COUNT(*) as total_reservas
       FROM reservas r
@@ -259,7 +315,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
     currentFilter.params,
   );
 
-  const metricasPromise = query(
+  const metricasPromise = q(
     `SELECT
         COUNT(*) FILTER (WHERE r.estado <> 'Cancelado') as total_reservas_activas,
         COUNT(*) FILTER (WHERE r.estado = 'Cancelado') as total_reservas_canceladas,
@@ -275,14 +331,14 @@ export async function getAnalyticsData({ start, end, sedeId }) {
     currentMetricsFilter.params,
   );
 
-  const ambientesActivosPromise = query(
+  const ambientesActivosPromise = q(
     sedeId
       ? "SELECT COUNT(*) as total_ambientes_activos FROM ambientes a JOIN sedes s ON s.id = a.sede_id WHERE a.estado = true AND s.activo = true AND a.sede_id = $1"
       : "SELECT COUNT(*) as total_ambientes_activos FROM ambientes a JOIN sedes s ON s.id = a.sede_id WHERE a.estado = true AND s.activo = true",
     sedeId ? [sedeId] : [],
   );
 
-  const tendenciaDiariaPromise = query(
+  const tendenciaDiariaPromise = q(
     `SELECT r.fecha,
             COUNT(*) as total_reservas,
             COALESCE(SUM(EXTRACT(EPOCH FROM (r.hora_fin::time - r.hora_inicio::time)) / 3600), 0) as total_horas
@@ -294,7 +350,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
     currentFilter.params,
   );
 
-  const heatmapOcupacionPromise = query(
+  const heatmapOcupacionPromise = q(
     `SELECT r.fecha,
             r.hora_inicio, r.hora_fin,
             COUNT(*) as total_reservas
@@ -307,7 +363,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
   );
 
   const metricasPreviasPromise = previousFilter
-    ? query(
+    ? q(
         `SELECT
             COUNT(*) FILTER (WHERE r.estado <> 'Cancelado') as total_reservas_activas,
             COUNT(*) FILTER (WHERE r.estado = 'Cancelado') as total_reservas_canceladas,
@@ -342,7 +398,7 @@ export async function getAnalyticsData({ start, end, sedeId }) {
       tendenciaDiariaPromise,
       heatmapOcupacionPromise,
       metricasPreviasPromise,
-      getUtilization({ start, end, sedeId }),
+      getUtilization(q, { start, end, sedeId }),
     ]);
 
   const metricRow = metricas.rows[0] || {};
