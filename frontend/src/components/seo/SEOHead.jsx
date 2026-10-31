@@ -16,11 +16,12 @@ export function SEOHead({
   image,
   noIndex = false,
 }) {
-  const siteOrigin = window.location.origin;
+  const siteOrigin = import.meta.env.VITE_CANONICAL_ORIGIN || window.location.origin;
   const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} — Espacios en su momento`;
   const resolvedDescription = description || brand.description;
   const resolvedImage = image || `${siteOrigin}/img/nora-banner.png`;
-  const canonical = `${siteOrigin}/`;
+  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+  const canonical = new URL(pathname, `${siteOrigin}/`).href;
 
   return (
     <Helmet>

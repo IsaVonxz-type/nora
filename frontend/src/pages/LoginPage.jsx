@@ -54,6 +54,7 @@ export function LoginPage() {
       <SEOHead
         title="Iniciar sesión"
         description="Accede a Nora para consultar disponibilidad, organizar reservas y coordinar espacios compartidos."
+        noIndex
       />
       <div className="auth-layout">
         <form className="auth-card" onSubmit={onSubmit}>

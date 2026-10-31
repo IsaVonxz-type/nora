@@ -18,4 +18,16 @@ describe("SEOHead", () => {
     expect(structuredData.url).toBe(`${window.location.origin}/`);
     expect(structuredData.name).toBe("Nora");
   });
+
+  it("uses the current route as its canonical URL", async () => {
+    window.history.replaceState({}, "", "/login/");
+    render(createElement(HelmetProvider, null, createElement(SEOHead, { title: "Iniciar sesión" })));
+
+    await waitFor(() => {
+      expect(document.querySelector('link[rel="canonical"]')?.href)
+        .toBe(`${window.location.origin}/login`);
+    });
+
+    window.history.replaceState({}, "", "/");
+  });
 });

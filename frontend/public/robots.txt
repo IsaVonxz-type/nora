@@ -9,5 +9,3 @@ Disallow: /analytics
 Disallow: /usuarios
 Disallow: /operaciones
 Disallow: /api/
-
-Sitemap: /sitemap.xml
