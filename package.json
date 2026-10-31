@@ -1,6 +1,6 @@
 {
   "name": "nora",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Aplicación web para coordinar sedes, espacios compartidos, disponibilidad, reservas y operación, con demo pública de datos sintéticos.",
   "main": "backend/dev-server.js",
   "type": "module",
