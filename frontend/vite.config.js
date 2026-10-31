@@ -51,11 +51,24 @@ function seoAssets() {
   };
 }
 
+function absoluteSocialMetadata() {
+  return {
+    name: "nora-absolute-social-metadata",
+    transformIndexHtml(html) {
+      if (!canonicalOrigin) return html;
+      return html
+        .replace(/(property="og:url" content=")\/"/, `$1${canonicalOrigin}/"`)
+        .replace(/((?:property="og:image"|name="twitter:image") content=")(\/[^"]*)"/g, `$1${canonicalOrigin}$2"`)
+        .replace(/("url": ")\/"/, `$1${canonicalOrigin}/"`);
+    },
+  };
+}
+
 export default defineConfig({
   define: {
     "import.meta.env.VITE_CANONICAL_ORIGIN": JSON.stringify(canonicalOrigin),
   },
-  plugins: [react(), seoAssets()],
+  plugins: [react(), absoluteSocialMetadata(), seoAssets()],
   server: {
     port: 5173,
     proxy: {

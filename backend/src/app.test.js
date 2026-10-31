@@ -58,6 +58,17 @@ describe("app", () => {
       expect(response.headers["cache-control"]).toBe("no-store");
     });
 
+    it("keeps only the landing indexable by sending noindex on every other SPA route", async () => {
+      const landing = await request(app).get("/");
+      expect(landing.headers["x-robots-tag"]).toBeUndefined();
+
+      for (const route of ["/login", "/demo", "/dashboard", "/sedes", "/ruta-que-no-existe"]) {
+        const response = await request(app).get(route);
+        expect(response.status).toBe(200);
+        expect(response.headers["x-robots-tag"]).toBe("noindex");
+      }
+    });
+
     it("serves index.html without caching", async () => {
       const response = await request(app).get("/index.html");
 

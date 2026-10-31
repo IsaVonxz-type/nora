@@ -36,6 +36,15 @@
       ]
     },
     {
+      "source": "/(login|demo|dashboard|ambientes|reservas|disponibilidad|calendario|analytics|usuarios|operaciones|sedes)(/.*)?",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {

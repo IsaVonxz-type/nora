@@ -106,6 +106,7 @@ if (hasReactBuild) {
             return next();
         }
         res.set("Cache-Control", "no-store");
+        if (req.path !== "/") res.set("X-Robots-Tag", "noindex");
         res.sendFile(path.join(reactDistPath, "index.html"), {
             cacheControl: false,
             etag: false,
