@@ -58,6 +58,13 @@ export async function findUserSessionVersion(id) {
   return rows[0];
 }
 
+export async function revokeUserSessions(id, sessionVersion) {
+  await query(
+    "UPDATE usuarios SET session_version = session_version + 1, updated_at = NOW() WHERE id = $1 AND session_version = $2",
+    [id, sessionVersion],
+  );
+}
+
 export async function updateUsuario(id, data) {
   const { rows } = await query(
     `UPDATE usuarios SET nombre = $2, email = $3, rol = $4,

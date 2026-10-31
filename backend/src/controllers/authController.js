@@ -1,5 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { loginUser, buildCookieOptions } from "../services/authService.js";
+import { revokeUserSessions } from "../models/usersModel.js";
 
 const COOKIE_NAME = "token";
 
@@ -21,6 +22,9 @@ export const profile = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  if (req.user) {
+    await revokeUserSessions(req.user.id, req.user.session_version ?? 0);
+  }
   res.cookie(COOKIE_NAME, "", { ...buildCookieOptions(), maxAge: 0 });
   res.json({ message: "Sesion cerrada" });
 });

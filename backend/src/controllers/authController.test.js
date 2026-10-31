@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 
 // Mocks deben declararse antes de la importación de app
 vi.mock("../../db/connection.js", () => ({ query: vi.fn(), default: {} }));
@@ -26,7 +25,6 @@ function makeToken(rol = "Admin") {
 }
 
 const PASSWORD = "password123";
-const PASSWORD_HASH = bcrypt.hashSync(PASSWORD, 10);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -115,5 +113,35 @@ describe("POST /api/logout", () => {
     const res = await request(app).post("/api/logout");
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/sesion/i);
+  });
+
+  it("revoca todas las sesiones vigentes y no revoca un inicio posterior al reutilizar el token", async () => {
+    let version = 0;
+    query.mockImplementation(async (sql, values) => {
+      if (sql.startsWith("SELECT session_version")) return { rows: [{ session_version: version, activo: true }] };
+      if (sql.startsWith("UPDATE usuarios SET session_version")) {
+        if (values[1] === version) version += 1;
+        return { rows: [] };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    const oldToken = makeToken();
+    const response = await request(app).post("/api/logout").set("Cookie", `token=${oldToken}`);
+    expect(response.status).toBe(200);
+    expect(version).toBe(1);
+    const revoked = await request(app).get("/api/profile").set("Cookie", `token=${oldToken}`);
+    expect(revoked.body.user).toBeNull();
+    const freshToken = jwt.sign({ id: 1, nombre: "Test User", rol: "Admin", session_version: 1 }, SECRET);
+    await request(app).post("/api/logout").set("Cookie", `token=${oldToken}`);
+    expect(version).toBe(1);
+    const fresh = await request(app).get("/api/profile").set("Cookie", `token=${freshToken}`);
+    expect(fresh.body.user.id).toBe(1);
+  });
+
+  it("no confirma cierre cuando la revocación en base de datos falla", async () => {
+    query.mockResolvedValueOnce({ rows: [{ session_version: 0, activo: true }] });
+    query.mockRejectedValueOnce(new Error("database unavailable"));
+    const response = await request(app).post("/api/logout").set("Cookie", `token=${makeToken()}`);
+    expect(response.status).toBe(500);
   });
 });
