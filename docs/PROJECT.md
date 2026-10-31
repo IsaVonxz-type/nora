@@ -16,6 +16,8 @@ Nora coordina espacios, sedes, reservas, disponibilidad y operación en una sola
 
 Los wrappers `api/` delegan a Express. Cambia handlers backend, no wrappers, para modificar la API.
 
+La API es de uso interno por la interfaz Nora; sus rutas no constituyen un contrato público estable para integraciones externas.
+
 ## Seguridad y datos
 
 El JWT viaja en cookie HttpOnly. La versión de sesión en el usuario permite revocación tras cambios de rol, estado o contraseña. Las rutas backend verifican permisos aunque la interfaz también oculte acciones. CORS y CSRF validan orígenes exactos.

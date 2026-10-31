@@ -63,8 +63,15 @@ Completa estos valores sin subir el archivo a Git:
 | `DATABASE_URL` | Conexión a la base PostgreSQL de Nora |
 | `JWT_SECRET` | Secreto aleatorio de al menos 32 caracteres |
 | `PORT` | Puerto de API, predeterminado `3000` |
-| `CORS_ORIGIN` | Origen exacto de la interfaz si necesitas sobrescribirlo |
+| `CORS_ORIGIN` | Origen HTTPS exacto de la interfaz. Obligatorio en producción fuera de Vercel (sin él el servidor no arranca); en Vercel se deriva del dominio del proyecto |
+| `TRUST_PROXY_HOPS` | Número de proxies de confianza delante de Node (por ejemplo `1`). Sin él, los límites por IP usan la IP del proxy; configúralo solo si el proxy reemplaza `X-Forwarded-For` |
 | `ENABLE_COMPRESSION` | Sobrescritura opcional con `true` o `false` |
+| `DB_POOL_MAX` | Conexiones máximas del pool PostgreSQL (5 en producción, 10 en desarrollo) |
+| `DB_CONNECTION_TIMEOUT_MS` | Tiempo máximo para obtener conexión (5000 ms) |
+| `DB_IDLE_TIMEOUT_MS` | Tiempo antes de cerrar conexión inactiva (30000 ms) |
+| `DB_STATEMENT_TIMEOUT_MS` | Tiempo máximo por sentencia PostgreSQL (15000 ms) |
+| `DB_QUERY_TIMEOUT_MS` | Tiempo máximo de espera por consulta (15000 ms) |
+| `VITE_SITE_URL` | URL pública canónica del build. Debe existir en el entorno del proceso que ejecuta `pnpm run build:frontend`: el build del frontend no lee el `.env` de la raíz. Tiene prioridad sobre el dominio de producción de Vercel; sin ninguno de los dos no se genera `sitemap.xml` |
 
 Genera un secreto nuevo para cada entorno y guárdalo en `.env` o en el gestor de secretos del despliegue:
 
@@ -80,7 +87,9 @@ postgresql://USER:PASSWORD@localhost:5432/nora_local?sslmode=disable
 
 En producción usa TLS con verificación de certificado, por ejemplo `sslmode=verify-full`. El backend rechaza `sslmode=disable` en producción.
 
-El frontend usa `/api` por defecto. `frontend/.env.example` documenta `VITE_API_BASE_URL` para una API separada; en desarrollo normal no hace falta configurarlo.
+El frontend usa `/api` por defecto y el despliegue previsto sirve interfaz y API desde el mismo origen. `frontend/.env.example` documenta `VITE_API_BASE_URL` para una API separada, pero la política de seguridad de contenido (`connect-src 'self'` en `backend/app.js` y `vercel.json`) bloquea en el navegador las peticiones a otro origen. Para esa topología hay que ampliar `connect-src` con el origen de la API y alinear `CORS_ORIGIN` y las cookies; la variable por sí sola no basta.
+
+La API es interna a la interfaz de Nora; no se ofrece como contrato estable para integraciones externas. El build genera sitemap y referencia `robots.txt` con el dominio canónico. En Vercel toma `VERCEL_PROJECT_PRODUCTION_URL`; fuera de Vercel configura `VITE_SITE_URL`.
 
 ### 3. Preparar una base nueva
 
@@ -128,6 +137,8 @@ pnpm run dev
 
 Después del primer acceso, crea sedes, configura sus horarios semanales y agrega espacios. Los horarios iniciales están cerrados: configura días y horas reales antes de reservar o interpretar ocupación.
 
+La disponibilidad, las reservas activas y las reprogramaciones respetan los horarios actuales de la sede. En una recurrencia se omiten las fechas que quedan fuera de esos horarios. Solo se pueden reprogramar reservas pendientes, antes de la entrega. Cerrar sesión revoca todas las sesiones activas de la cuenta, incluidas las de otros dispositivos.
+
 ## Demo pública
 
 Desde la landing, selecciona **Probar la demo** o abre `/demo`. Entra al workspace como `Admin` con sedes, ambientes, reservas, usuarios y operaciones sintéticos. No requiere cuenta, backend ni base de datos.
@@ -157,13 +168,13 @@ Este repositorio es público para consulta. Issues están desactivados y no se a
 | `pnpm run test:smoke` | Arranca servidor y comprueba endpoints básicos |
 | `pnpm run test:integration` | Integración contra PostgreSQL descartable de CI |
 
-`test:smoke` requiere `.env` válido y un build previo. Integración se omite sin `TEST_DATABASE_URL`; sus guardas solo permiten una base descartable de CI, con usuario y base `ambientes_ci`, host loopback y opt-in explícito. Nunca uses producción para estas pruebas. La configuración está en `.github/workflows/ci.yml`.
+`test:smoke` requiere `.env` válido y un build previo. Arranca `backend/dev-server.js`, pero si el puerto ya está ocupado continúa contra el servicio que lo use y envía un login inválido; `SMOKE_BASE_URL` cambia el destino. Ejecútalo solo contra una instancia local o de prueba tuya, y comprueba antes que el puerto 3000 esté libre. Integración se omite sin `TEST_DATABASE_URL`; sus guardas solo permiten una base descartable de CI, con usuario y base `ambientes_ci`, host loopback y opt-in explícito. Nunca uses producción para estas pruebas. La configuración está en `.github/workflows/ci.yml`.
 
 ## Datos de ejemplo locales
 
 El seed opcional `pnpm run db:seed:demo` está restringido a PostgreSQL loopback y a la base **`ambientes_local`**. No funciona sobre `nora_local` ni sobre bases remotas por diseño.
 
-Si necesitas este dataset, prepara una base vacía llamada `ambientes_local`, aplica las migraciones y crea una cuenta activa `demo.admin@ambientes.local` con rol `Admin` siguiendo el procedimiento anterior. Define `LOCAL_DEMO_DATABASE_URL` en el entorno de la terminal y ejecuta el seed. Para iniciar la aplicación sobre esos datos, apunta también `DATABASE_URL` a esa base.
+Si necesitas este dataset, prepara una base vacía llamada `ambientes_local`. Antes de ejecutar `pnpm run db:migrate`, configura y verifica que `DATABASE_URL` apunte a esa base local: las migraciones usan `DATABASE_URL`, no `LOCAL_DEMO_DATABASE_URL`. Crea allí una cuenta activa `demo.admin@ambientes.local` con rol `Admin` siguiendo el procedimiento anterior. Después configura y verifica que `LOCAL_DEMO_DATABASE_URL` también apunte a `ambientes_local` y ejecuta el seed. Para iniciar la aplicación sobre esos datos, mantén `DATABASE_URL` apuntando a esa misma base.
 
 El seed crea sedes, espacios, reservas y mantenimiento de ejemplo. Al repetirlo actualiza los espacios y horarios demo; no debe ejecutarse sobre información que quieras conservar sin cambios.
 
