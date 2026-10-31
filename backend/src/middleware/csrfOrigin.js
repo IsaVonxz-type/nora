@@ -11,8 +11,9 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  * without an Origin header on a mutating method (e.g. direct server-to-server
  * or curl) are allowed through — they are not CSRF attacks.
  *
- * SameSite=None on the auth cookie removes browser-level CSRF protection,
- * so this middleware enforces it at the application layer.
+ * In production the auth cookie uses SameSite=None, which removes browser-level
+ * CSRF protection (development uses Lax), so this middleware enforces it at the
+ * application layer.
  */
 export function csrfOriginCheck(req, res, next) {
   if (SAFE_METHODS.has(req.method)) return next();

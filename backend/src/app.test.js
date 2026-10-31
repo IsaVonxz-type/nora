@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import fs from "fs";
 import path from "path";
@@ -19,6 +19,26 @@ describe("app", () => {
 
   it("trusts one proxy hop only when running on Vercel", () => {
     expect(app.get("trust proxy")).toBe(process.env.VERCEL ? 1 : false);
+  });
+
+  it("trusts an explicit number of proxy hops from TRUST_PROXY_HOPS", async () => {
+    const previous = process.env.TRUST_PROXY_HOPS;
+    process.env.TRUST_PROXY_HOPS = "2";
+    try {
+      vi.resetModules();
+      const { default: configured } = await import("../app.js");
+      expect(configured.get("trust proxy")).toBe(2);
+    } finally {
+      if (previous === undefined) delete process.env.TRUST_PROXY_HOPS;
+      else process.env.TRUST_PROXY_HOPS = previous;
+    }
+  });
+
+  it.skipIf(process.env.VERCEL)("sets a content security policy outside Vercel", async () => {
+    const response = await request(app).get("/api");
+
+    expect(response.headers["content-security-policy"]).toContain("default-src 'self'");
+    expect(response.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   });
 
   it("returns JSON for unknown API routes without SPA HTML", async () => {

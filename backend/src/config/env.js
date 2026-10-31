@@ -35,6 +35,12 @@ export const ENABLE_COMPRESSION =
 // Optional: override the allowed CORS origin in production.
 // Defaults to the current Vercel deployment, then to the local frontend.
 const deploymentHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+if (IS_PROD && !process.env.VERCEL && !process.env.CORS_ORIGIN) {
+    throw new Error(
+        "CORS_ORIGIN es obligatorio en producción fuera de Vercel.\n" +
+        "Define el origen HTTPS exacto de la interfaz, por ejemplo https://nora.ejemplo.com.",
+    );
+}
 export const CORS_ORIGIN = process.env.CORS_ORIGIN ||
     (deploymentHost ? `https://${deploymentHost}` : "http://localhost:5173");
 

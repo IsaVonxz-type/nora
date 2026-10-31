@@ -25,14 +25,31 @@ const hasReactBuild = fs.existsSync(path.join(reactDistPath, "index.html"));
 
 const app = express();
 app.set("env", IS_PROD ? "production" : NODE_ENV);
-app.set("trust proxy", process.env.VERCEL ? 1 : false);
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS);
+app.set(
+    "trust proxy",
+    Number.isInteger(proxyHops) && proxyHops > 0 ? proxyHops : (process.env.VERCEL ? 1 : false),
+);
 app.disable("x-powered-by");
 app.set("etag", "weak");
 
 // ── Security headers ─────────────────────────────────────────────────────────
-// CSP is managed via vercel.json for the CDN layer; disable helmet's CSP to
-// avoid double-setting conflicting directives. All other helmet defaults apply.
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+    contentSecurityPolicy: process.env.VERCEL ? false : {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            fontSrc: ["'self'"],
+            connectSrc: ["'self'"],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            upgradeInsecureRequests: [],
+        },
+    },
+}));
 
 // ── CORS ────────────────────────────────────────────────────────────────────
 app.use(

@@ -118,22 +118,30 @@ async function run() {
           const missing = schemaCheck.rows.map(({ table_name, column_name }) => `${table_name}.${column_name}`);
           throw new Error(`No se puede registrar baseline: faltan columnas ${missing.join(", ")}`);
         }
-        const requiredIndexes = [
-          "idx_reservas_fecha_ambiente", "idx_reservas_fecha_hora_id", "idx_reservas_estado",
-          "idx_reservas_pendientes_entrega", "idx_reservas_pendientes_devolucion", "idx_reservas_activas_fecha",
-          "idx_usuarios_email_normalized", "idx_reservas_creado_por_id", "idx_rate_limit_entries_reset_at",
-          "idx_bloqueos_ambiente_activos",
-        ];
+        const requiredIndexes = {
+          idx_reservas_fecha_ambiente: ["(fecha, ambiente_id)"],
+          idx_reservas_fecha_hora_id: ["(fecha, hora_inicio, id)"],
+          idx_reservas_estado: ["(estado)"],
+          idx_reservas_pendientes_entrega: ["(fecha)", "Cancelado", "entregado_en IS NULL"],
+          idx_reservas_pendientes_devolucion: ["(fecha)", "Cancelado", "entregado_en IS NOT NULL", "devuelto_en IS NULL"],
+          idx_reservas_activas_fecha: ["(fecha)", "Cancelado"],
+          idx_usuarios_email_normalized: ["CREATE UNIQUE INDEX", "lower(TRIM(BOTH FROM email))"],
+          idx_reservas_creado_por_id: ["(creado_por_id)"],
+          idx_rate_limit_entries_reset_at: ["(reset_at)"],
+          idx_bloqueos_ambiente_activos: ["(ambiente_id, inicio, fin)", "WHERE activo"],
+        };
         const indexCheck = await client.query(
-          `SELECT required.name
+          `SELECT required.name, pg_get_indexdef(index_class.oid) AS definition,
+                  (index_info.indisvalid AND index_info.indisready) AS usable
            FROM unnest($1::text[]) AS required(name)
            LEFT JOIN pg_class index_class ON index_class.oid = to_regclass('public.' || required.name)
-           LEFT JOIN pg_index index_info ON index_info.indexrelid = index_class.oid
-           WHERE index_class.oid IS NULL OR NOT index_info.indisvalid OR NOT index_info.indisready`,
-          [requiredIndexes],
+           LEFT JOIN pg_index index_info ON index_info.indexrelid = index_class.oid`,
+          [Object.keys(requiredIndexes)],
         );
-        if (indexCheck.rowCount) {
-          throw new Error(`No se puede registrar baseline: faltan índices válidos ${indexCheck.rows.map(({ name }) => name).join(", ")}`);
+        const invalidIndexes = indexCheck.rows.filter(({ name, definition, usable }) =>
+          !definition || !usable || !requiredIndexes[name].every((fragment) => definition.includes(fragment)));
+        if (invalidIndexes.length) {
+          throw new Error(`No se puede registrar baseline: faltan índices válidos ${invalidIndexes.map(({ name }) => name).join(", ")}`);
         }
         const requiredConstraintCounts = [
           ["sedes", "p", 1], ["sedes", "u", 1],
@@ -162,6 +170,29 @@ async function run() {
         if (constraintCheck.rowCount) {
           const missing = constraintCheck.rows.map(({ table_name, constraint_type }) => `${table_name}(${constraint_type})`);
           throw new Error(`No se puede registrar baseline: faltan restricciones ${missing.join(", ")}`);
+        }
+        const requiredCheckFragments = {
+          reservas: ["hora_fin > hora_inicio", "Reservado"],
+          usuarios: ["session_version >= 0", "Instructor"],
+          rate_limit_entries: ["hits >= 0"],
+          bloqueos_ambiente: ["fin > inicio"],
+          sede_horarios: ["hora_cierre > hora_apertura"],
+        };
+        const definitions = await client.query(
+          `SELECT relation.relname AS table_name, pg_get_constraintdef(actual.oid) AS definition
+           FROM pg_constraint actual
+           JOIN pg_class relation ON relation.oid = actual.conrelid
+           JOIN pg_namespace relation_schema ON relation_schema.oid = relation.relnamespace
+           WHERE relation_schema.nspname = 'public' AND actual.contype = 'c' AND relation.relname = ANY($1::text[])`,
+          [Object.keys(requiredCheckFragments)],
+        );
+        const mismatched = Object.entries(requiredCheckFragments).flatMap(([table, fragments]) => {
+          const tableDefinitions = definitions.rows.filter((row) => row.table_name === table).map((row) => row.definition);
+          return fragments.filter((fragment) => !tableDefinitions.some((definition) => definition.includes(fragment)))
+            .map((fragment) => `${table}(${fragment})`);
+        });
+        if (mismatched.length) {
+          throw new Error(`No se puede registrar baseline: restricciones con definición distinta ${mismatched.join(", ")}`);
         }
         await client.query(
           "INSERT INTO schema_migrations (version, checksum) VALUES ($1, $2)",
