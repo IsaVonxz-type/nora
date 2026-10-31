@@ -62,9 +62,9 @@ describe("app", () => {
       const landing = await request(app).get("/");
       expect(landing.headers["x-robots-tag"]).toBeUndefined();
 
-      for (const route of ["/login", "/demo", "/dashboard", "/sedes", "/ruta-que-no-existe"]) {
+      for (const [route, status] of [["/login", 200], ["/demo", 200], ["/dashboard", 200], ["/sedes", 200], ["/ruta-que-no-existe", 404]]) {
         const response = await request(app).get(route);
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(status);
         expect(response.headers["x-robots-tag"]).toBe("noindex");
       }
     });

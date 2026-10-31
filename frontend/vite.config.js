@@ -14,6 +14,7 @@ const canonicalOrigin = configuredSiteUrl
 function seoAssets() {
   return {
     name: "nora-seo-assets",
+    apply: clientBuildOnly,
     async closeBundle() {
       const output = path.resolve("dist");
       const robots = [
@@ -51,9 +52,12 @@ function seoAssets() {
   };
 }
 
+const clientBuildOnly = (config) => !config.build?.ssr;
+
 function absoluteSocialMetadata() {
   return {
     name: "nora-absolute-social-metadata",
+    apply: clientBuildOnly,
     transformIndexHtml(html) {
       if (!canonicalOrigin) return html;
       return html
@@ -68,6 +72,7 @@ export default defineConfig({
   define: {
     "import.meta.env.VITE_CANONICAL_ORIGIN": JSON.stringify(canonicalOrigin),
   },
+  build: { manifest: true },
   plugins: [react(), absoluteSocialMetadata(), seoAssets()],
   server: {
     port: 5173,

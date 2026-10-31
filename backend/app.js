@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from "./src/middleware/errorHandler.js"
 import { requestId } from "./src/middleware/requestId.js";
 import { apiLimiter } from "./src/middleware/rateLimiter.js";
 import { csrfOriginCheck } from "./src/middleware/csrfOrigin.js";
+import { isKnownSpaRoute } from "../shared/spaRoutes.js";
 import {
     allowedOrigins,
     ENABLE_COMPRESSION,
@@ -20,8 +21,12 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const reactDistPath = path.join(__dirname, "..", "frontend", "dist");
-const hasReactBuild = fs.existsSync(path.join(reactDistPath, "index.html"));
+const reactDistPath = process.env.FRONTEND_DIST_DIR || path.join(__dirname, "..", "frontend", "dist");
+const landingPath = path.join(reactDistPath, "index.html");
+const hasReactBuild = fs.existsSync(landingPath);
+const appShellPath = fs.existsSync(path.join(reactDistPath, "app.html"))
+    ? path.join(reactDistPath, "app.html")
+    : landingPath;
 
 const app = express();
 app.set("env", IS_PROD ? "production" : NODE_ENV);
@@ -91,7 +96,7 @@ if (hasReactBuild) {
             lastModified: true,
             maxAge: 0,
             setHeaders: (res, filePath) => {
-                if (path.basename(filePath) === "index.html") {
+                if (["index.html", "app.html", "404.html"].includes(path.basename(filePath))) {
                     res.setHeader("Cache-Control", "no-store");
                 }
             },
@@ -106,8 +111,10 @@ if (hasReactBuild) {
             return next();
         }
         res.set("Cache-Control", "no-store");
-        if (req.path !== "/") res.set("X-Robots-Tag", "noindex");
-        res.sendFile(path.join(reactDistPath, "index.html"), {
+        const isLanding = req.path === "/";
+        if (!isLanding) res.set("X-Robots-Tag", "noindex");
+        res.status(isKnownSpaRoute(req.path) ? 200 : 404);
+        res.sendFile(isLanding ? landingPath : appShellPath, {
             cacheControl: false,
             etag: false,
             lastModified: false,

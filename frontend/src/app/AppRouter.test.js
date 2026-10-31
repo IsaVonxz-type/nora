@@ -1,11 +1,12 @@
 import { configure, fireEvent, render, screen, within } from "@testing-library/react";
 import { createElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, createRoutesFromElements, matchRoutes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuth } from "../hooks/useAuth";
 import { isDemoActive } from "../services/demoSession";
-import { AppRouter } from "./AppRouter";
+import { SPA_ROUTES, isKnownSpaRoute } from "../../../shared/spaRoutes.js";
+import { AppRouter, workspaceRoutes } from "./AppRouter";
 
 vi.mock("../hooks/useAuth", () => ({ useAuth: vi.fn() }));
 vi.mock("../hooks/useDarkMode", () => ({ useDarkMode: () => ({ isDark: false, toggle: vi.fn() }) }));
@@ -83,8 +84,32 @@ describe("AppRouter", () => {
     expect(screen.queryByRole("heading", { name: "Contenido sedes" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Sedes" })).toBeNull();
   });
-  it("redirects unknown paths to the public landing", async () => {
+  it("shows a not-found page with a way back instead of redirecting unknown paths", async () => {
     render(createElement(MemoryRouter, { initialEntries: ["/unknown"] }, createElement(AppRouter)));
-    await screen.findByRole("heading", { name: /Cada espacio, en su momento/ });
+    await screen.findByRole("heading", { name: "Página no encontrada" });
+    expect(screen.getByRole("link", { name: "Ir al inicio de Nora" }).getAttribute("href")).toBe("/");
+    expect(screen.queryByRole("heading", { name: /Cada espacio, en su momento/ })).toBeNull();
+  });
+  it("sends the demo user back to the demo dashboard from the not-found page", async () => {
+    sessionStorage.setItem("nora:demo:active:v1", "active");
+    render(createElement(MemoryRouter, { initialEntries: ["/unknown"] }, createElement(AppRouter)));
+    await screen.findByRole("heading", { name: "Página no encontrada" });
+    expect(screen.getByRole("link", { name: "Volver al panel de la demo" }).getAttribute("href")).toBe("/dashboard");
+  });
+});
+
+describe("SPA route list", () => {
+  const routes = createRoutesFromElements(workspaceRoutes());
+  const lastMatch = (pathname) => matchRoutes(routes, pathname)?.at(-1)?.route;
+
+  it.each(SPA_ROUTES)("has a real route for %s in the server list", (pathname) => {
+    const route = lastMatch(pathname);
+    expect(route).toBeTruthy();
+    expect(route.path).not.toBe("*");
+  });
+
+  it.each(["/nada", "/dashboard/otro", "/reservas/1", "/login.php"])("treats %s as unknown in both the router and the list", (pathname) => {
+    expect(lastMatch(pathname).path).toBe("*");
+    expect(isKnownSpaRoute(pathname)).toBe(false);
   });
 });

@@ -16,12 +16,13 @@ export function SEOHead({
   image,
   noIndex = false,
 }) {
-  const siteOrigin = import.meta.env.VITE_CANONICAL_ORIGIN || window.location.origin;
+  const browser = typeof window !== "undefined";
+  const siteOrigin = import.meta.env.VITE_CANONICAL_ORIGIN || (browser ? window.location.origin : "");
   const fullTitle = title ? `${title} | ${brand.name}` : `${brand.name} — Espacios en su momento`;
   const resolvedDescription = description || brand.description;
   const resolvedImage = image || `${siteOrigin}/img/nora-banner.png`;
-  const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
-  const canonical = new URL(pathname, `${siteOrigin}/`).href;
+  const pathname = browser ? window.location.pathname.replace(/\/+$/, "") || "/" : "/";
+  const canonical = siteOrigin ? new URL(pathname, `${siteOrigin}/`).href : "";
 
   return (
     <Helmet>
@@ -30,27 +31,27 @@ export function SEOHead({
       <meta name="description" content={resolvedDescription} />
       <meta name="robots" content={noIndex ? "noindex, nofollow" : "index, follow, max-snippet:160, max-image-preview:large"} />
       <meta name="theme-color" content="#245dc1" />
-      <link rel="canonical" href={canonical} />
+      {canonical && <link rel="canonical" href={canonical} />}
       <link rel="icon" type="image/svg+xml" href={brand.logo} />
       <link rel="apple-touch-icon" href="/img/nora-mark.png" />
       <link rel="manifest" href="/manifest.json" />
       <meta property="og:site_name" content={brand.name} />
-      <meta property="og:url" content={canonical} />
+      {canonical && <meta property="og:url" content={canonical} />}
       <meta property="og:image:alt" content={brand.name} />
 
       {/* Open Graph */}
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={resolvedDescription} />
-      <meta property="og:image" content={resolvedImage} />
+      {siteOrigin && <meta property="og:image" content={resolvedImage} />}
 
       {/* Twitter */}
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
-      <meta name="twitter:image" content={resolvedImage} />
+      {siteOrigin && <meta name="twitter:image" content={resolvedImage} />}
       <meta name="twitter:image:alt" content={brand.name} />
       <script type="application/ld+json">{JSON.stringify({
         "@context": "https://schema.org", "@type": "WebApplication", name: brand.name,
-        url: canonical, description: resolvedDescription, applicationCategory: "BusinessApplication",
+        ...(canonical ? { url: canonical } : {}), description: resolvedDescription, applicationCategory: "BusinessApplication",
         operatingSystem: "All", inLanguage: "es-CO",
       })}</script>
     </Helmet>

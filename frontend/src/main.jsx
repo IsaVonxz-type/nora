@@ -6,6 +6,8 @@ import { HelmetProvider } from "react-helmet-async";
 import { ToastProvider } from "./components/ui/Toast";
 import "./styles/global.css";
 import { AppRouter } from "./app/AppRouter";
+import { isDemoActive } from "./services/demoSession";
+import { normalizeSpaPath } from "../../shared/spaRoutes.js";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,9 +18,8 @@ const queryClient = new QueryClient({
   },
 });
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-
-root.render(
+const container = document.getElementById("root");
+const app = (
   <React.StrictMode>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
@@ -29,5 +30,12 @@ root.render(
         </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
+
+const prerenderedLanding = normalizeSpaPath(window.location.pathname) === "/"
+  && container.hasChildNodes()
+  && !isDemoActive();
+
+if (prerenderedLanding) ReactDOM.hydrateRoot(container, app);
+else ReactDOM.createRoot(container).render(app);

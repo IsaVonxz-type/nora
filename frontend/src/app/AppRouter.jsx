@@ -13,6 +13,9 @@ const DemoEntry = lazy(() =>
 const LandingPage = lazy(() =>
   import("../pages/LandingPage").then((module) => ({ default: module.LandingPage })),
 );
+const NotFoundPage = lazy(() =>
+  import("../pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
+);
 const DashboardPage = lazy(() =>
   import("../pages/DashboardPage").then((module) => ({ default: module.DashboardPage })),
 );
@@ -49,7 +52,7 @@ function RouteFallback() {
   );
 }
 
-function workspaceRoutes() {
+export function workspaceRoutes() {
   return <Route path="/">
     <Route index element={isDemoActive() ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
     <Route path="login" element={isDemoActive() ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
@@ -71,7 +74,7 @@ function workspaceRoutes() {
         </Route>
       </Route>
     </Route>
-    <Route path="*" element={<Navigate to={isDemoActive() ? "/dashboard" : "/"} replace />} />
+    <Route path="*" element={<NotFoundPage />} />
   </Route>;
 }
 

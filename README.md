@@ -189,6 +189,8 @@ pnpm start
 
 Configura `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET` y el origen HTTPS de la interfaz. Sin `frontend/dist/index.html`, las rutas no API devuelven `503`.
 
+`pnpm run build:frontend` compila la SPA y prerenderiza la landing: genera `index.html` con la landing ya renderizada (se hidrata en el navegador), `app.html` con el contenedor vacío para el resto de rutas y `404.html` para rutas desconocidas. Las rutas válidas están en un solo lugar, `shared/spaRoutes.js`; al agregar una página hay que añadirla ahí y en las reglas de `vercel.json`, y una prueba falla si no coinciden. Las rutas fuera de esa lista responden **404** real, con una página de «no encontrada», y todas las rutas excepto `/` llevan `X-Robots-Tag: noindex`.
+
 `vercel.json` configura instalación, build, salida SPA, API y cabeceras de seguridad. El despliegue **no aplica SQL**: prepara la base antes de publicar. Cada instalación debe tener sus propias credenciales y datos; Nora no comparte varias organizaciones dentro de una misma base.
 
 ## Estructura
