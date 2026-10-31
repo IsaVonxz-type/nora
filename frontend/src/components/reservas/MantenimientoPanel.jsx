@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { httpClient } from "../../services/httpClient";
 import { extractErrorMessage } from "../../utils/formatters";
 import { invalidateReservationQueries } from "../../services/reservationQueries";
 
+const PAGE_SIZE = 50;
+const MAX_LIMIT = 500;
 const EMPTY_FORM = { ambienteId: "", motivo: "", inicio: "", fin: "" };
+
+function focusOnMount(node) {
+  node?.focus();
+}
 
 export function MantenimientoPanel({ ambientes = [] }) {
   const queryClient = useQueryClient();
@@ -13,10 +19,17 @@ export function MantenimientoPanel({ ambientes = [] }) {
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [closing, setClosing] = useState(null);
+  const closeTrigger = useRef(null);
   const blocks = useQuery({
-    queryKey: ["mantenimiento"],
-    queryFn: async () => (await httpClient.get("/api/mantenimiento")).data,
+    queryKey: ["mantenimiento", limit],
+    queryFn: async () => {
+      const response = await httpClient.get("/api/mantenimiento", { params: { limit } });
+      return { rows: response.data, hasMore: response.headers["x-has-more"] === "true" };
+    },
     enabled: open,
+    placeholderData: (previous) => previous,
   });
   const mutation = useMutation({
     mutationFn: async ({ id, payload }) => id
@@ -51,11 +64,22 @@ export function MantenimientoPanel({ ambientes = [] }) {
     }
   }
 
+  function requestClose(block, event) {
+    closeTrigger.current = event.currentTarget;
+    setClosing(block.id);
+  }
+
+  function dismissClose() {
+    setClosing(null);
+    closeTrigger.current?.focus?.();
+  }
+
   async function closeBlock(id) {
     setError("");
     setSuccess("");
     try {
       await mutation.mutateAsync({ id });
+      setClosing(null);
       setSuccess("Bloqueo cerrado. Se conserva el historial del incidente.");
     } catch (failure) {
       setError(extractErrorMessage(failure, "No se pudo cerrar el bloqueo"));
@@ -95,14 +119,25 @@ export function MantenimientoPanel({ ambientes = [] }) {
       {success && <p role="status">{success}</p>}
       {blocks.isLoading && <p role="status">Cargando bloqueos…</p>}
       {blocks.isError && <p className="alert" role="alert">No se pudieron cargar los bloqueos.</p>}
-      {blocks.isSuccess && !blocks.data.length && <p className="subtle">No hay bloqueos registrados.</p>}
-      <div className="cards-grid">{(blocks.data || []).map((block) => <article key={block.id} className="ambiente-card"><div className="ambiente-card__body stack-md">
+      {blocks.isSuccess && !blocks.data.rows.length && <p className="subtle">No hay bloqueos registrados.</p>}
+      <div className="cards-grid">{(blocks.data?.rows || []).map((block) => <article key={block.id} className="ambiente-card"><div className="ambiente-card__body stack-md">
         <div className="section-heading"><strong>{block.ambiente_codigo}</strong><span className="status-badge">{block.activo ? "Bloqueo activo" : "Cerrado"}</span></div>
         <p>{block.motivo}</p><p className="subtle">{block.inicio.replace("T", " ")} — {block.fin.replace("T", " ")}</p>
         <p className="subtle">Registrado por {block.creado_por}{block.cerrado_por ? ` · Cerrado por ${block.cerrado_por}` : ""}</p>
-        {block.activo && <button className="btn-secondary" disabled={mutation.isPending} onClick={() => closeBlock(block.id)}>Cerrar bloqueo de {block.ambiente_codigo}</button>}
+        {block.activo && <button className="btn-secondary" aria-expanded={closing === block.id} disabled={mutation.isPending} onClick={(event) => requestClose(block, event)}>Cerrar bloqueo de {block.ambiente_codigo}</button>}
+        {block.activo && closing === block.id && <div className="reserva-confirm" role="group" aria-labelledby={`close-title-${block.id}`} aria-describedby={`close-text-${block.id}`}>
+          <div className="reserva-confirm__title" id={`close-title-${block.id}`}>Cerrar bloqueo de {block.ambiente_codigo}</div>
+          <p className="reserva-confirm__text" id={`close-text-${block.id}`}>El ambiente quedará disponible para reservas entre {block.inicio.replace("T", " ")} y {block.fin.replace("T", " ")}. El historial se conserva.</p>
+          <div className="reserva-confirm__actions">
+            <button type="button" ref={focusOnMount} className="btn-ghost" disabled={mutation.isPending} onClick={dismissClose}>Cancelar</button>
+            <button type="button" className="btn-primary" disabled={mutation.isPending} onClick={() => closeBlock(block.id)}>{mutation.isPending ? "Cerrando…" : "Sí, cerrar bloqueo"}</button>
+          </div>
+        </div>}
       </div></article>)}</div>
-      <p className="subtle">Se muestran los 200 bloqueos más recientes, activos primero. Un bloqueo activo solo afecta su período.</p>
+      {blocks.data?.hasMore && (limit < MAX_LIMIT
+        ? <button className="btn-secondary" disabled={blocks.isFetching} onClick={() => setLimit((current) => Math.min(current + PAGE_SIZE, MAX_LIMIT))}>{blocks.isFetching ? "Cargando…" : "Mostrar más bloqueos"}</button>
+        : <p className="subtle" role="status">Hay más bloqueos de los que se pueden mostrar aquí.</p>)}
+      <p className="subtle">Se muestran los bloqueos más recientes, activos primero. Un bloqueo activo solo afecta su período.</p>
     </div>}
   </section>;
 }

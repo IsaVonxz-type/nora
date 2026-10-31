@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../db/connection.js", () => ({ query: vi.fn(), default: { connect: vi.fn() } }));
 import pool, { query } from "../../db/connection.js";
-import { createBloqueo, closeBloqueo } from "./mantenimientoModel.js";
+import { createBloqueo, closeBloqueo, listBloqueos } from "./mantenimientoModel.js";
 
 const user = { id: 7, nombre: "Operador" };
 const payload = { ambienteId: 12, motivo: "Fuga de agua", inicio: "2028-02-29T08:00", fin: "2028-03-01T10:00" };
@@ -12,6 +12,15 @@ beforeEach(() => {
   vi.resetAllMocks();
   client = { query: vi.fn(async () => ({ rows: [] })), release: vi.fn() };
   pool.connect.mockResolvedValue(client);
+});
+
+describe("listBloqueos pagination", () => {
+  it("returns one page and reports whether more blocks exist", async () => {
+    query.mockResolvedValueOnce({ rows: [{ id: 3 }, { id: 2 }] });
+
+    await expect(listBloqueos({ limit: 1, offset: 5 })).resolves.toEqual({ rows: [{ id: 3 }], hasMore: true });
+    expect(query.mock.calls.at(-1)[1]).toEqual([2, 5]);
+  });
 });
 
 describe("maintenance lifecycle", () => {

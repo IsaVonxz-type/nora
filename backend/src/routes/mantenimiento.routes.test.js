@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 
 vi.mock("../models/usersModel.js", () => ({ findUserSessionVersion: vi.fn(async () => ({ session_version: 0 })) }));
 vi.mock("../services/mantenimientoService.js", () => ({
-  listBloqueos: vi.fn(async () => []),
+  listBloqueos: vi.fn(async () => ({ rows: [], hasMore: false })),
   createBloqueo: vi.fn(async () => ({ id: 9 })),
   closeBloqueo: vi.fn(async () => ({ id: 9, activo: false })),
 }));
@@ -33,6 +33,19 @@ describe("maintenance role boundary", () => {
       const token = jwt.sign({ id: 7, nombre: "Operador", rol }, "test-secret-do-not-use-in-production", { expiresIn: "1h" });
       const response = await request(app)[method](path).set("Cookie", `token=${token}`).send({});
       expect(response.status).toBe(rol === "Instructor" ? 403 : method === "post" ? 201 : 200);
+    }
+  });
+  it("paginates the list and reports whether more blocks exist", async () => {
+    findUserSessionVersion.mockResolvedValue({ session_version: 0, activo: true });
+    service.listBloqueos.mockResolvedValueOnce({ rows: [{ id: 1 }], hasMore: true });
+    const token = jwt.sign({ id: 7, nombre: "Operador", rol: "Admin" }, "test-secret-do-not-use-in-production");
+    const response = await request(app).get("/api/mantenimiento?limit=1&offset=2").set("Cookie", `token=${token}`);
+    expect(response.status).toBe(200);
+    expect(response.headers["x-has-more"]).toBe("true");
+    expect(response.body).toEqual([{ id: 1 }]);
+    expect(service.listBloqueos).toHaveBeenCalledWith({ limit: 1, offset: 2 });
+    for (const bad of ["limit=0", "limit=501", "limit=abc", "offset=-1"]) {
+      expect((await request(app).get(`/api/mantenimiento?${bad}`).set("Cookie", `token=${token}`)).status).toBe(400);
     }
   });
   it("passes authenticated actor instead of body actor", async () => {

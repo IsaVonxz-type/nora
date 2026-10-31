@@ -56,12 +56,42 @@ it("preserves incident details after conflict, then creates corrected block and 
   expect(invalidation).toHaveBeenCalledWith({ queryKey: ["disponibilidad"] });
 });
 
+it("loads more blocks on demand while the server reports additional pages", async () => {
+  mock.onGet("/api/mantenimiento").reply(({ params }) => [
+    200,
+    [block],
+    { "x-has-more": String(params.limit < 100) },
+  ]);
+  mount();
+  fireEvent.click(await screen.findByRole("button", { name: "Mostrar más bloqueos" }));
+  await waitFor(() => expect(mock.history.get.at(-1).params.limit).toBe(100));
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Mostrar más bloqueos" })).toBeNull());
+  expect(mock.history.get[0].params.limit).toBe(50);
+});
+
+it("asks for confirmation before closing and keeps the block when cancelled", async () => {
+  mock.onGet("/api/mantenimiento").reply(200, [block]);
+  mount();
+  const trigger = await screen.findByRole("button", { name: "Cerrar bloqueo de A-12" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const group = screen.getByRole("group", { name: "Cerrar bloqueo de A-12" });
+  expect(group.textContent).toContain("quedará disponible");
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(screen.queryByRole("group", { name: "Cerrar bloqueo de A-12" })).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cerrar bloqueo de A-12" }));
+  expect(mock.history.patch).toHaveLength(0);
+});
+
 it("closes incident while retaining displayed reason and actor history", async () => {
   let closed = false;
   mock.onGet("/api/mantenimiento").reply(() => [200, [closed ? { ...block, activo: false, cerrado_por: "Logística" } : block]]);
   mock.onPatch("/api/mantenimiento/9").reply(() => { closed = true; return [200, { id: 9, activo: false }]; });
   mount();
   fireEvent.click(await screen.findByRole("button", { name: "Cerrar bloqueo de A-12" }));
+  expect(mock.history.patch).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Sí, cerrar bloqueo" }));
   await screen.findByText("Cerrado");
   expect(screen.getByText(block.motivo)).toBeTruthy();
   expect(screen.getByText(/Cerrado por Logística/)).toBeTruthy();

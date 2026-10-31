@@ -7,13 +7,14 @@ const BLOCK_COLUMNS = `b.id, b.ambiente_id, b.motivo, b.activo,
   b.creado_por, b.creado_por_id, b.creado_en,
   b.cerrado_por, b.cerrado_por_id, b.cerrado_en, a.codigo AS ambiente_codigo`;
 
-export async function listBloqueos() {
+export async function listBloqueos({ limit = 50, offset = 0 } = {}) {
   const { rows } = await query(
     `SELECT ${BLOCK_COLUMNS} FROM bloqueos_ambiente b
      JOIN ambientes a ON a.id=b.ambiente_id
-     ORDER BY b.activo DESC, b.inicio DESC, b.id DESC LIMIT 200`,
+     ORDER BY b.activo DESC, b.inicio DESC, b.id DESC LIMIT $1 OFFSET $2`,
+    [limit + 1, offset],
   );
-  return rows;
+  return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
 }
 
 export async function createBloqueo(payload, user) {
