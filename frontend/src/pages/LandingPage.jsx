@@ -191,7 +191,7 @@ export function LandingPage() {
       />
       <a className="landing-skip" href="#main-content">Saltar al contenido principal</a>
       <header className="landing-header">
-        <Link className="landing-brand" to="/" aria-label="Nora, inicio">
+        <Link className="landing-brand" to="/">
           <img src="/img/nora-mark.svg" alt="" width="44" height="44" />
           <span><strong>Nora</strong><small>Espacios en su momento</small></span>
         </Link>
@@ -308,7 +308,7 @@ export function LandingPage() {
       </main>
 
       <footer className="landing-footer">
-        <Link className="landing-brand landing-brand--footer" to="/" aria-label="Nora, inicio">
+        <Link className="landing-brand landing-brand--footer" to="/">
           <img src="/img/nora-mark.svg" alt="" width="36" height="36" />
           <span><strong>Nora</strong><small>Espacios en su momento</small></span>
         </Link>

@@ -101,6 +101,10 @@ export function AmbientesPage() {
           </h3>
         </div>
 
+        {sedesQuery.isError && (
+          <div className="query-notice" role="alert"><p>No se pudieron cargar las sedes. El filtro por sede y la creación de ambientes no están disponibles hasta reintentar.</p><button className="btn-secondary" onClick={() => sedesQuery.refetch()}>Reintentar sedes</button></div>
+        )}
+
         {ambientesQuery.isError && (
           <div className="query-notice" role="alert"><p>Error al cargar ambientes.</p><button className="btn-secondary" onClick={() => ambientesQuery.refetch()}>Reintentar</button></div>
         )}

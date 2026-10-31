@@ -109,6 +109,31 @@ describe("ReservasPage", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it("explains a failed room load and lets the user retry", async () => {
+    mock.resetHandlers();
+    mock.onGet("/api/reservas").reply(200, [reservation(1, "Sala-1")]);
+    mock.onGet("/api/ambientes").replyOnce(500);
+    mock.onGet("/api/ambientes").reply(200, []);
+    renderPage();
+
+    expect(await screen.findByText(/No se pudieron cargar los ambientes/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar ambientes" }));
+    await waitFor(() => expect(screen.queryByText(/No se pudieron cargar los ambientes/)).toBeNull());
+  });
+
+  it("does not offer rescheduling after delivery or return", async () => {
+    mock.resetHandlers();
+    mock.onGet("/api/ambientes").reply(200, []);
+    mock.onGet("/api/reservas").reply(200, [
+      { ...reservation(1, "Entregada"), entregado_en: "2028-02-29T08:00:00" },
+      { ...reservation(2, "Devuelta"), devuelto_en: "2028-02-29T10:00:00" },
+      reservation(3, "Pendiente"),
+    ]);
+    renderPage();
+    await screen.findByText("Pendiente");
+    expect(screen.getAllByRole("button", { name: "Reprogramar reserva" })).toHaveLength(1);
+  });
+
   it("sends state and search filters to backend", async () => {
     renderPage();
     await screen.findByText("Sala-1");

@@ -69,4 +69,30 @@ describe("DisponibilidadPage reservation handoff", () => {
     expect(screen.getByText("Disponible")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Reservar este ambiente" })).toBeNull();
   });
+
+  it("shows a retry when sites fail to load and enables the selector after retry", async () => {
+    mock.resetHandlers();
+    mock.onGet("/api/sedes").replyOnce(503);
+    mock.onGet("/api/sedes").reply(200, [{ id: 1, nombre: "Centro" }]);
+    render(createElement(QueryClientProvider, { client },
+      createElement(MemoryRouter, null, createElement(DisponibilidadPage)),
+    ));
+
+    expect(screen.getByRole("combobox", { name: /Sede/ }).disabled).toBe(true);
+    fireEvent.click(await screen.findByRole("button", { name: "Reintentar" }));
+
+    await screen.findByRole("option", { name: "Centro" });
+    expect(screen.getByRole("combobox", { name: /Sede/ }).disabled).toBe(false);
+  });
+
+  it("explains when there are no active sites and prevents submission", async () => {
+    mock.onGet("/api/sedes").reply(200, []);
+    render(createElement(QueryClientProvider, { client },
+      createElement(MemoryRouter, null, createElement(DisponibilidadPage)),
+    ));
+
+    expect(await screen.findByText("No hay sedes activas disponibles.")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Sede/ }).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "Consultar disponibilidad" }).disabled).toBe(true);
+  });
 });

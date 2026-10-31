@@ -17,6 +17,58 @@ const heatmapOcupacion = dates.flatMap((fecha, index) => [
   { fecha, hora: 9, total_reservas: 1 },
 ]).reverse();
 
+describe("AnalyticsPage comparison and loading states", () => {
+  let client;
+  let mock;
+
+  beforeEach(() => {
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    mock = new MockAdapter(httpClient);
+    mock.onGet("/api/sedes").reply(200, []);
+  });
+
+  afterEach(() => { client.clear(); mock.restore(); });
+
+  function renderPage() {
+    render(createElement(QueryClientProvider, { client }, createElement(MemoryRouter, null, createElement(AnalyticsPage))));
+  }
+
+  it("does not invent a 100% increase when the previous period is zero", async () => {
+    mock.onGet("/api/analytics").reply(200, {
+      metricas: { totalReservasActivas: 5, totalHorasReservadas: 0, totalReservasCanceladas: 3, totalAmbientesActivos: 2 },
+      metricasPrevias: { totalReservasActivas: 0, totalHorasReservadas: 0, totalReservasCanceladas: 6, totalAmbientesActivos: null },
+    });
+    renderPage();
+
+    expect(await screen.findByText("Sin base de comparación (periodo anterior en 0)")).toBeTruthy();
+    expect(screen.getByText("0% vs periodo anterior")).toBeTruthy();
+    expect(screen.getByText("-50% vs periodo anterior")).toBeTruthy();
+    expect(screen.queryByText(/\+100%/)).toBeNull();
+  });
+
+  it("shows loading messages instead of empty-data messages while the report loads", async () => {
+    mock.onGet("/api/analytics").reply(() => new Promise(() => {}));
+    renderPage();
+
+    expect(await screen.findByText("Cargando mapa de ocupación…")).toBeTruthy();
+    expect(screen.getByText("Cargando ambientes…")).toBeTruthy();
+    expect(screen.getByText("Cargando horas…")).toBeTruthy();
+    expect(screen.queryByText(/Sin datos/)).toBeNull();
+  });
+
+  it("explains a failed site filter load and lets the user retry", async () => {
+    mock.onGet("/api/sedes").reply(500);
+    mock.onGet("/api/analytics").reply(200, {});
+    renderPage();
+
+    expect(await screen.findByText(/No se pudieron cargar las sedes/)).toBeTruthy();
+    mock.onGet("/api/sedes").reply(200, [{ id: 1, nombre: "Centro" }]);
+    fireEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("option", { name: "Centro" })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(/No se pudieron cargar las sedes/)).toBeNull());
+  });
+});
+
 describe("AnalyticsPage heatmap windows", () => {
   let client;
   let mock;

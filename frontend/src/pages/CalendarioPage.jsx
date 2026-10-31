@@ -147,7 +147,15 @@ function CalendarWeekView({
   const weekDays = Array.from({ length: 7 }, (_, index) =>
     addDays(weekStart, index),
   );
-  const hours = Array.from({ length: 17 }, (_, index) => 6 + index);
+  const eventHours = weekDays.flatMap((day) =>
+    (reservasByDate.get(formatDate(day)) || [])
+      .filter((reserva) => includeCancelled || reserva.estado !== "Cancelado")
+      .map((reserva) => Number(String(reserva.hora_inicio).slice(0, 2)))
+      .filter((hour) => Number.isInteger(hour) && hour >= 0 && hour <= 23),
+  );
+  const firstHour = eventHours.reduce((first, hour) => Math.min(first, hour), 6);
+  const lastHour = eventHours.reduce((last, hour) => Math.max(last, hour), 22);
+  const hours = Array.from({ length: lastHour - firstHour + 1 }, (_, index) => firstHour + index);
 
   return (
     <section className="panel stack-md" aria-busy={isFetching}>

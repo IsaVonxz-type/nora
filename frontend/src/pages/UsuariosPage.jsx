@@ -8,6 +8,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../components/ui/Toast";
 import { SkeletonCard } from "../components/ui/Skeleton";
 import { SEOHead } from "../components/seo/SEOHead";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import { extractErrorMessage } from "../utils/formatters";
 
@@ -27,9 +28,9 @@ function validatePassword(contraseña) {
   return null;
 }
 
-function PasswordChecklist({ value }) {
+function PasswordChecklist({ id, value }) {
   return (
-    <ul className="password-checklist" aria-label="Requisitos de contraseña">
+    <ul id={id} className="password-checklist" aria-label="Requisitos de contraseña">
       {PASSWORD_RULES.map((rule) => {
         const met = value.length > 0 && rule.test(value);
         return (
@@ -57,15 +58,7 @@ function ChangePasswordModal({ user, onClose }) {
 
   const initialFocusRef = useFocusTrap(modalRef);
 
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const savedCssText = document.body.style.cssText;
-    document.body.style.cssText = `${savedCssText};overflow:hidden;position:fixed;top:-${scrollY}px;width:100%`;
-    return () => {
-      document.body.style.cssText = savedCssText;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
+  useBodyScrollLock();
 
   const mutation = useMutation({
     mutationFn: async ({ id, newPassword }) => {
@@ -150,11 +143,11 @@ function ChangePasswordModal({ user, onClose }) {
                 type="password"
                 required
                 aria-invalid={!!fieldErrors.newPassword}
-                aria-describedby={fieldErrors.newPassword ? "change-pw-new-error" : "change-pw-checklist"}
+                aria-describedby={fieldErrors.newPassword ? "change-pw-new-error change-pw-checklist" : "change-pw-checklist"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
               />
-              <PasswordChecklist value={newPassword} />
+              <PasswordChecklist id="change-pw-checklist" value={newPassword} />
               {fieldErrors.newPassword && (
                 <p id="change-pw-new-error" role="alert" className="field-error">{fieldErrors.newPassword}</p>
               )}
@@ -374,13 +367,13 @@ export function UsuariosPage() {
               type="password"
               required
               aria-invalid={!!fieldErrors.contraseña}
-              aria-describedby={fieldErrors.contraseña ? "usuario-contrasena-error" : "usuario-contrasena-checklist"}
+              aria-describedby={fieldErrors.contraseña ? "usuario-contrasena-error usuario-contrasena-checklist" : "usuario-contrasena-checklist"}
               value={form.contraseña}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, contraseña: event.target.value }))
               }
             />
-            <PasswordChecklist value={form.contraseña} />
+            <PasswordChecklist id="usuario-contrasena-checklist" value={form.contraseña} />
             {fieldErrors.contraseña && (
               <p id="usuario-contrasena-error" role="alert" className="field-error">{fieldErrors.contraseña}</p>
             )}

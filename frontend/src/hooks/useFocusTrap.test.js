@@ -46,4 +46,33 @@ describe("useFocusTrap", () => {
     expect(document.activeElement).toBe(trigger);
     trigger.remove();
   });
+
+  it("ignora controles ocultos al calcular los extremos del ciclo", () => {
+    function HiddenFirstHarness() {
+      const containerRef = useRef(null);
+      useFocusTrap(containerRef);
+      return createElement(
+        "div",
+        { ref: containerRef },
+        createElement("button", { type: "button", style: { display: "none" } }, "Oculto"),
+        createElement("button", { type: "button" }, "Visible uno"),
+        createElement("button", { type: "button" }, "Visible dos"),
+        createElement("button", { type: "button", style: { visibility: "hidden" } }, "Invisible"),
+      );
+    }
+    render(createElement(HiddenFirstHarness));
+    const first = screen.getByRole("button", { name: "Visible uno" });
+    const last = screen.getByRole("button", { name: "Visible dos" });
+
+    first.focus();
+    const reverseTab = createEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    fireEvent(first, reverseTab);
+    expect(reverseTab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
+
+    const forwardTab = createEvent.keyDown(last, { key: "Tab" });
+    fireEvent(last, forwardTab);
+    expect(forwardTab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+  });
 });

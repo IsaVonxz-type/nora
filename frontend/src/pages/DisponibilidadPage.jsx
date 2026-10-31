@@ -30,6 +30,8 @@ export function DisponibilidadPage() {
   });
 
   const sedesQuery = useQuery({ queryKey: ["sedes"], queryFn: fetchSedes });
+  const sedes = sedesQuery.data || [];
+  const noSedes = sedesQuery.isSuccess && sedes.length === 0;
 
   const disponibilidadMutation = useMutation({
     mutationFn: fetchDisponibilidad,
@@ -97,13 +99,14 @@ export function DisponibilidadPage() {
             <select
               id="disp-sede"
               required
+              disabled={sedesQuery.isPending || sedesQuery.isError || noSedes}
               aria-invalid={!!fieldErrors.sede_id}
               aria-describedby={fieldErrors.sede_id ? "disp-sede-error" : undefined}
               value={form.sede_id}
               onChange={(e) => setForm((p) => ({ ...p, sede_id: e.target.value }))}
             >
               <option value="">Selecciona una sede…</option>
-              {(sedesQuery.data || []).map((sede) => (
+              {sedes.map((sede) => (
                 <option key={sede.id} value={sede.id}>
                   {sede.nombre}
                 </option>
@@ -112,7 +115,17 @@ export function DisponibilidadPage() {
             {fieldErrors.sede_id && (
               <p id="disp-sede-error" role="alert" className="field-error">{fieldErrors.sede_id}</p>
             )}
+            {sedesQuery.isPending && <p role="status" className="subtle">Cargando sedes…</p>}
+            {noSedes && <p className="subtle">No hay sedes activas disponibles.</p>}
           </label>
+          {sedesQuery.isError && (
+            <div className="alert" role="alert">
+              <p>No se pudieron cargar las sedes.</p>
+              <button className="btn-secondary" type="button" onClick={() => sedesQuery.refetch()}>
+                Reintentar
+              </button>
+            </div>
+          )}
 
           <label>
             Fecha
@@ -164,7 +177,7 @@ export function DisponibilidadPage() {
 
           <button
             className="btn-primary form-submit"
-            disabled={isLoading}
+            disabled={isLoading || sedesQuery.isPending || sedesQuery.isError || noSedes}
             type="submit"
             aria-busy={isLoading}
           >

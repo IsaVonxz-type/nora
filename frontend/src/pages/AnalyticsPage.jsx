@@ -40,17 +40,16 @@ function formatShortDate(value) {
   });
 }
 
-function formatPercentDelta(current, previous) {
+function formatComparison(current, previous) {
   if (current == null || previous == null) return "Sin historial disponible";
   const currentNum = toNumber(current);
   const previousNum = toNumber(previous);
   if (previousNum === 0) {
-    if (currentNum === 0) return "0%";
-    return "+100%";
+    return currentNum === 0 ? "0% vs periodo anterior" : "Sin base de comparación (periodo anterior en 0)";
   }
   const delta = ((currentNum - previousNum) / previousNum) * 100;
   const sign = delta > 0 ? "+" : "";
-  return `${sign}${delta.toFixed(0)}%`;
+  return `${sign}${delta.toFixed(0)}% vs periodo anterior`;
 }
 
 function getPresetRange(preset) {
@@ -212,6 +211,12 @@ export function AnalyticsPage() {
               ))}
             </select>
           </label>
+          {sedesQuery.isError && (
+            <p className="alert" role="alert">
+              No se pudieron cargar las sedes; el filtro muestra solo «Todas».{" "}
+              <button type="button" className="btn-secondary" onClick={() => sedesQuery.refetch()}>Reintentar</button>
+            </p>
+          )}
 
           {preset === "custom" ? (
             <>
@@ -255,24 +260,24 @@ export function AnalyticsPage() {
             <article className="panel metric-card">
               <p className="subtle">Reservas activas</p>
               <strong>{toNumber(metrics.totalReservasActivas)}</strong>
-              <span className="metric-delta">{formatPercentDelta(metrics.totalReservasActivas, previousMetrics.totalReservasActivas)} vs periodo anterior</span>
+              <span className="metric-delta">{formatComparison(metrics.totalReservasActivas, previousMetrics.totalReservasActivas)}</span>
             </article>
             <article className="panel metric-card">
               <p className="subtle">Horas reservadas</p>
               <strong>{toNumber(metrics.totalHorasReservadas).toFixed(1)}</strong>
-              <span className="metric-delta">{formatPercentDelta(metrics.totalHorasReservadas, previousMetrics.totalHorasReservadas)} vs periodo anterior</span>
+              <span className="metric-delta">{formatComparison(metrics.totalHorasReservadas, previousMetrics.totalHorasReservadas)}</span>
             </article>
             <article className="panel metric-card">
               <p className="subtle">Canceladas</p>
               <strong>{toNumber(metrics.totalReservasCanceladas)}</strong>
-              <span className="metric-delta">{formatPercentDelta(metrics.totalReservasCanceladas, previousMetrics.totalReservasCanceladas)} vs periodo anterior</span>
+              <span className="metric-delta">{formatComparison(metrics.totalReservasCanceladas, previousMetrics.totalReservasCanceladas)}</span>
             </article>
             <article className="panel metric-card">
               <p className="subtle">Ambientes activos</p>
               <strong>{toNumber(metrics.totalAmbientesActivos)}</strong>
               <span className="metric-delta">{previousMetrics.totalAmbientesActivos == null
                 ? "Estado actual · Sin historial disponible"
-                : `${formatPercentDelta(metrics.totalAmbientesActivos, previousMetrics.totalAmbientesActivos)} vs periodo anterior`}</span>
+                : formatComparison(metrics.totalAmbientesActivos, previousMetrics.totalAmbientesActivos)}</span>
             </article>
           </>
         )}
@@ -309,7 +314,9 @@ export function AnalyticsPage() {
 
       <section className="panel stack-md">
         <div className="section-heading"><h3>Mapa de ocupación</h3><span className="subtle">Hasta 14 fechas por vista</span></div>
-        {heatmapRows.dates.length === 0 || heatmapRows.hours.length === 0 ? (
+        {analyticsQuery.isLoading ? (
+          <p className="subtle" role="status">Cargando mapa de ocupación…</p>
+        ) : heatmapRows.dates.length === 0 || heatmapRows.hours.length === 0 ? (
           <p className="subtle">Sin datos suficientes para el mapa de ocupación.</p>
         ) : (
           <div className="heatmap-wrap">
@@ -380,7 +387,9 @@ export function AnalyticsPage() {
       <div className="two-col">
         <section className="panel stack-md">
           <h3>Ambientes mas usados</h3>
-          {topAmbientes.length === 0 ? (
+          {analyticsQuery.isLoading ? (
+            <p className="subtle" role="status">Cargando ambientes…</p>
+          ) : topAmbientes.length === 0 ? (
             <p className="subtle">Sin datos por ahora. Cuando existan más reservas verás tendencias aquí.</p>
           ) : (
             topAmbientes.map((item) => (
@@ -413,7 +422,9 @@ export function AnalyticsPage() {
 
         <section className="panel stack-md">
           <h3>Horas de mayor demanda</h3>
-          {topHoras.length === 0 ? (
+          {analyticsQuery.isLoading ? (
+            <p className="subtle" role="status">Cargando horas…</p>
+          ) : topHoras.length === 0 ? (
             <p className="subtle">Sin datos por ahora. Intenta ampliar el rango de reservas.</p>
           ) : (
             topHoras.map((item) => (

@@ -165,12 +165,10 @@
   font-size: 0.68rem;
   color: var(--sidebar-sub);
   text-decoration: none;
-  opacity: 0.6;
-  transition: opacity 0.15s;
 }
 
 :global(.shell__privacy-link:hover) {
-  opacity: 1;
+  color: var(--sidebar-text-hover);
   text-decoration: underline;
 }
 

@@ -297,7 +297,7 @@
 }
 
 :local(.page) :global(.landing-preview__topline) {
-  color: #768379;
+  color: #5c695f;
 }
 
 :local(.page) :global(.landing-preview__live) {
@@ -498,7 +498,7 @@
 }
 
 :local(.page) :global(.landing-tagline__word) {
-  color: rgba(17, 32, 24, 0.3);
+  color: #66756d;
   transition: color 700ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -1259,7 +1259,7 @@
 }
 
 :local(.page) :global(.landing-tagline__word) {
-  color: rgba(23, 37, 84, 0.3);
+  color: #66756d;
 }
 
 :local(.page) :global(.landing-tagline__word.is-visible) {

@@ -81,6 +81,21 @@ describe("CalendarioPage", () => {
     await waitFor(() => expect(document.activeElement).toBe(buttons[0]));
   });
 
+  it("shows early and late reservations in the weekly grid", async () => {
+    fetchReservas.mockResolvedValue([
+      ...reservas,
+      { id: 4, fecha: "2028-02-01", ambiente_codigo: "A-04", hora_inicio: "23:00:00", hora_fin: "23:59:00", estado: "Reservado" },
+    ]);
+    const { container } = renderCalendar();
+    await screen.findByRole("region", { name: "Agenda diaria de la semana" });
+    await waitFor(() => expect(container.querySelectorAll(".calendar-week-event")).toHaveLength(3));
+    const grid = container.querySelector(".calendar-week-grid");
+    expect(within(grid).getByText("A-02")).toBeTruthy();
+    expect(within(grid).getByText("A-04")).toBeTruthy();
+    expect(within(grid).getByText("05:00")).toBeTruthy();
+    expect(within(grid).getByText("23:00")).toBeTruthy();
+  });
+
   it("announces initial loading and background refresh with busy content", async () => {
     let resolveInitial;
     fetchReservas.mockImplementationOnce(() => new Promise((resolve) => { resolveInitial = resolve; }));

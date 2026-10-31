@@ -176,6 +176,10 @@ export function ReservasPage() {
         </div>
       </div>
 
+      {ambientesQuery.isError && (
+        <div className="query-notice" role="alert"><p>No se pudieron cargar los ambientes. No podrás crear reservas ni registrar bloqueos hasta reintentar.</p><button className="btn-secondary" onClick={() => ambientesQuery.refetch()}>Reintentar ambientes</button></div>
+      )}
+
       {formOpen && (
         <ReservaCreateForm
           key={draft ? `${draft.ambienteId}-${draft.fecha}-${draft.horaInicio}-${draft.horaFin}` : "new"}
@@ -294,7 +298,7 @@ export function ReservasPage() {
                           </div>
                         )}
                       </div>
-                      {(role === "admin" || role === "logistica") && reserva.estado !== "Cancelado" && (
+                      {(role === "admin" || role === "logistica") && reserva.estado !== "Cancelado" && !reserva.entregado_en && !reserva.devuelto_en && (
                         <div className="card-actions">
                           <button className="btn-secondary" onClick={() => {
                             rescheduleTrigger.current = document.activeElement;

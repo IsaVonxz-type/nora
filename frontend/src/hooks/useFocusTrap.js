@@ -9,6 +9,12 @@ export const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(", ");
 
+function isRendered(element) {
+  if (typeof element.checkVisibility === "function") return element.checkVisibility({ visibilityProperty: true });
+  const style = window.getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden";
+}
+
 export function useFocusTrap(containerRef, { enabled = true, restoreFocus = true } = {}) {
   const initialFocusRef = useCallback((node) => {
     if (node) {
@@ -28,7 +34,7 @@ export function useFocusTrap(containerRef, { enabled = true, restoreFocus = true
       const container = containerRef.current;
       if (!container || !container.contains(document.activeElement)) return;
 
-      const focusable = Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR));
+      const focusable = Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR)).filter(isRendered);
       if (!focusable.length) return;
 
       const first = focusable[0];
