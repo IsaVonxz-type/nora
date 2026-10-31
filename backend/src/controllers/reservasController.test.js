@@ -237,14 +237,35 @@ describe("GET /api/reservas", () => {
 
   it("returns reservation audit history to logistics users", async () => {
     const events = [{ id: 1, action: "created" }];
-    reservasService.getReservaAuditLog.mockResolvedValueOnce(events);
+    reservasService.getReservaAuditLog.mockResolvedValueOnce({ rows: events, hasMore: true });
     const res = await request(app)
-      .get("/api/reservas/12/audit")
+      .get("/api/reservas/12/audit?limit=1&offset=3")
       .set("Cookie", `token=${makeToken("Logistica")}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(events);
-    expect(reservasService.getReservaAuditLog).toHaveBeenCalledWith(12);
+    expect(res.headers["x-has-more"]).toBe("true");
+    expect(reservasService.getReservaAuditLog).toHaveBeenCalledWith(12, { limit: 1, offset: 3 });
+  });
+
+  it("answers an unknown PATCH action with the common error shape including requestId", async () => {
+    const res = await request(app)
+      .patch("/api/reservas/12")
+      .set("Cookie", `token=${makeToken("Admin")}`)
+      .send({ action: "explode" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("action debe ser");
+    expect(res.body.requestId).toBeTruthy();
+  });
+
+  it("rejects invalid audit pagination", async () => {
+    for (const bad of ["limit=0", "limit=201", "offset=x"]) {
+      const res = await request(app)
+        .get(`/api/reservas/12/audit?${bad}`)
+        .set("Cookie", `token=${makeToken("Logistica")}`);
+      expect(res.status).toBe(400);
+    }
   });
 });
 

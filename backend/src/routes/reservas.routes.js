@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, allowRoles } from "../middleware/auth.js";
 import * as ctrl from "../controllers/reservasController.js";
+import { AppError } from "../utils/errors.js";
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.patch("/:id", authenticate, async (req, res, next) => {
       err ? next(err) : ctrl.reschedule(req, res, next),
     );
   }
-  res.status(400).json({ message: "action debe ser cancel, deliver, return o reschedule" });
+  next(new AppError("action debe ser cancel, deliver, return o reschedule", 400));
 });
 
 export default router;

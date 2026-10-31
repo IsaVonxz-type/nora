@@ -27,6 +27,10 @@ const mockClient = {
   release: vi.fn(),
 };
 
+const openHours = Array.from({ length: 7 }, (_, dia_semana) => ({
+  dia_semana, cerrado: false, hora_apertura: "07:00", hora_cierre: "18:00",
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockPool.connect.mockResolvedValue(mockClient);
@@ -128,8 +132,15 @@ describe("listReservas", () => {
     const events = [{ id: 2, action: "returned" }];
     mockQuery.mockResolvedValueOnce({ rows: events });
 
-    await expect(listReservaAuditLog(7)).resolves.toEqual(events);
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ORDER BY changed_at DESC, id DESC LIMIT $2"), [7, 100]);
+    await expect(listReservaAuditLog(7)).resolves.toEqual({ rows: events, hasMore: false });
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ORDER BY changed_at DESC, id DESC LIMIT $2 OFFSET $3"), [7, 101, 0]);
+  });
+
+  it("flags additional audit events beyond the requested page", async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ id: 3 }, { id: 2 }] });
+
+    await expect(listReservaAuditLog(7, { limit: 1, offset: 4 })).resolves.toEqual({ rows: [{ id: 3 }], hasMore: true });
+    expect(mockQuery.mock.calls[0][1]).toEqual([7, 2, 4]);
   });
 });
 
@@ -232,6 +243,7 @@ describe("insertReservaAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})                      // BEGIN
       .mockResolvedValueOnce({ rows: [{ estado: true }] }) // ambiente activo
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })            // pg_advisory_xact_lock
        .mockResolvedValueOnce({ rows: [] })            // SELECT FOR UPDATE (no conflicts)
        .mockResolvedValueOnce({ rows: [] })
@@ -244,9 +256,9 @@ describe("insertReservaAtomically", () => {
     expect(mockClient.release).toHaveBeenCalledOnce();
     const calls = mockClient.query.mock.calls.map((c) => c[0]);
     expect(calls[0]).toBe("BEGIN");
-    expect(calls[1]).toMatch(/SELECT a.estado, s.activo AS sede_activa FROM ambientes/);
-    expect(calls[2]).toMatch(/pg_advisory_xact_lock/);
-    expect(calls[6]).toBe("COMMIT");
+    expect(calls[1]).toMatch(/SELECT a.estado, s.activo AS sede_activa/);
+    expect(calls[3]).toMatch(/pg_advisory_xact_lock/);
+    expect(calls[7]).toBe("COMMIT");
   });
 
   it("retorna null y hace COMMIT cuando hay conflicto de horario", async () => {
@@ -259,6 +271,7 @@ describe("insertReservaAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})                          // BEGIN
       .mockResolvedValueOnce({ rows: [{ estado: true }] }) // ambiente activo
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })                // pg_advisory_xact_lock
        .mockResolvedValueOnce({ rows: [conflicting] })     // SELECT FOR UPDATE (conflict)
        .mockResolvedValueOnce({ rows: [] })
@@ -269,7 +282,7 @@ describe("insertReservaAtomically", () => {
     expect(result).toBeNull();
     expect(mockClient.release).toHaveBeenCalledOnce();
     const calls = mockClient.query.mock.calls.map((c) => c[0]);
-    expect(calls[5]).toBe("COMMIT");
+    expect(calls[6]).toBe("COMMIT");
   });
 
   it("inserta sin comprobar conflicto cuando estado es Cancelado", async () => {
@@ -279,6 +292,7 @@ describe("insertReservaAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})                          // BEGIN
       .mockResolvedValueOnce({ rows: [{ estado: true }] }) // ambiente activo
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })                // pg_advisory_xact_lock
        .mockResolvedValueOnce({ rows: [conflicting] })     // SELECT FOR UPDATE
        .mockResolvedValueOnce({ rows: [] })
@@ -294,6 +308,7 @@ describe("insertReservaAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})               // BEGIN
       .mockResolvedValueOnce({ rows: [{ estado: true }] }) // ambiente activo
+      .mockResolvedValueOnce({ rows: openHours })
       .mockRejectedValueOnce(new Error("DB error")); // pg_advisory_xact_lock throws
 
     await expect(insertReservaAtomically(payload)).rejects.toThrow("DB error");
@@ -305,6 +320,7 @@ describe("insertReservaAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -313,7 +329,7 @@ describe("insertReservaAtomically", () => {
 
     await insertReservaAtomically(payload);
 
-    const lockCall = mockClient.query.mock.calls[2];
+    const lockCall = mockClient.query.mock.calls[3];
     expect(lockCall[1]).toEqual([[`reserva:${payload.ambiente_id}:${payload.fecha}`]]);
   });
 
@@ -329,7 +345,7 @@ describe("insertReservaAtomically", () => {
     });
     expect(mockClient.query.mock.calls.map((call) => call[0])).toEqual([
       "BEGIN",
-      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa FROM ambientes"),
+      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa"),
       "ROLLBACK",
     ]);
   });
@@ -346,7 +362,7 @@ describe("insertReservaAtomically", () => {
     });
     expect(mockClient.query.mock.calls.map((call) => call[0])).toEqual([
       "BEGIN",
-      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa FROM ambientes"),
+      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa"),
       "ROLLBACK",
     ]);
   });
@@ -396,6 +412,7 @@ describe("insertReservasAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ inicio: "2025-06-15T18:00", fin: "2025-06-17T08:00" }] })
@@ -406,7 +423,7 @@ describe("insertReservasAtomically", () => {
     const insert = mockClient.query.mock.calls.find(([sql]) => sql.startsWith("INSERT INTO reservas"));
     expect(insert[1]).toContain("2025-06-23");
     expect(insert[1]).not.toContain("2025-06-16");
-    expect(mockClient.query.mock.calls[4][0]).toContain("AND activo");
+    expect(mockClient.query.mock.calls[5][0]).toContain("AND activo");
   });
 
   it.each([
@@ -419,6 +436,7 @@ describe("insertReservasAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ inicio, fin }] });
@@ -433,6 +451,7 @@ describe("insertReservasAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -445,21 +464,22 @@ describe("insertReservasAtomically", () => {
     const calls = mockClient.query.mock.calls;
     expect(calls.map((call) => call[0])).toEqual([
       "BEGIN",
-      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa FROM ambientes"),
+      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa"),
+      expect.stringContaining("FROM sede_horarios"),
       "SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest($1::text[]) AS keys(key)",
       expect.stringContaining("SELECT fecha"),
       expect.stringContaining("FROM bloqueos_ambiente"),
       expect.stringContaining("INSERT INTO reservas"),
       "COMMIT",
     ]);
-    expect(calls[2][1]).toEqual([
+    expect(calls[3][1]).toEqual([
       ["reserva:1:2025-06-16", "reserva:1:2025-06-23"],
     ]);
-    expect(calls[3][1]).toEqual([1, ["2025-06-16", "2025-06-23"], "Cancelado"]);
-    expect(calls[5][0]).toMatch(
+    expect(calls[4][1]).toEqual([1, ["2025-06-16", "2025-06-23"], "Cancelado"]);
+    expect(calls[6][0]).toMatch(
       /VALUES \(\$1,\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11\),\(\$12,\$13,\$14,\$15,\$16,\$17,\$18,\$19,\$20,\$21,\$22\)/,
     );
-    expect(calls[5][1]).toEqual([
+    expect(calls[6][1]).toEqual([
       1,
       1,
       "2025-06-16",
@@ -491,6 +511,7 @@ describe("insertReservasAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -506,6 +527,7 @@ describe("insertReservasAtomically", () => {
     mockClient.query
       .mockResolvedValueOnce({})
       .mockResolvedValueOnce({ rows: [{ estado: true }] })
+      .mockResolvedValueOnce({ rows: openHours })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -517,7 +539,8 @@ describe("insertReservasAtomically", () => {
     const calls = mockClient.query.mock.calls.map((call) => call[0]);
     expect(calls).toEqual([
       "BEGIN",
-      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa FROM ambientes"),
+      expect.stringContaining("SELECT a.estado, s.activo AS sede_activa"),
+      expect.stringContaining("FROM sede_horarios"),
       "SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest($1::text[]) AS keys(key)",
       expect.stringContaining("SELECT fecha"),
       expect.stringContaining("FROM bloqueos_ambiente"),

@@ -185,10 +185,18 @@ describe("reservasService.getReservas", () => {
 
 describe("reservasService.getReservaAuditLog", () => {
   it("validates reservation id and limits event history", async () => {
-    reservasModel.listReservaAuditLog.mockResolvedValueOnce([{ id: 3, action: "created" }]);
-    await expect(reservasService.getReservaAuditLog(8)).resolves.toEqual([{ id: 3, action: "created" }]);
-    expect(reservasModel.listReservaAuditLog).toHaveBeenCalledWith(8, 100);
+    const page = { rows: [{ id: 3, action: "created" }], hasMore: false };
+    reservasModel.getReservaById.mockResolvedValueOnce({ id: 8 });
+    reservasModel.listReservaAuditLog.mockResolvedValueOnce(page);
+    await expect(reservasService.getReservaAuditLog(8)).resolves.toEqual(page);
+    expect(reservasModel.listReservaAuditLog).toHaveBeenCalledWith(8, { limit: 100, offset: 0 });
     await expect(reservasService.getReservaAuditLog("0")).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("returns 404 for a reservation that does not exist instead of an empty history", async () => {
+    reservasModel.getReservaById.mockResolvedValueOnce(null);
+    await expect(reservasService.getReservaAuditLog(999)).rejects.toMatchObject({ status: 404, code: "RESERVA_NOT_FOUND" });
+    expect(reservasModel.listReservaAuditLog).not.toHaveBeenCalled();
   });
 });
 

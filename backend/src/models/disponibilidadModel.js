@@ -12,7 +12,12 @@ export async function buscarDisponibilidad({
      JOIN sedes s ON s.id = a.sede_id
      WHERE a.sede_id = $1
         AND a.estado = true
-        AND s.activo = true
+         AND s.activo = true
+         AND EXISTS (
+           SELECT 1 FROM sede_horarios h
+           WHERE h.sede_id = s.id AND h.dia_semana = EXTRACT(DOW FROM $2::date)
+             AND NOT h.cerrado AND h.hora_apertura <= $3::time AND h.hora_cierre >= $4::time
+         )
         AND NOT EXISTS (
           SELECT 1 FROM bloqueos_ambiente b
           WHERE b.ambiente_id = a.id AND b.activo

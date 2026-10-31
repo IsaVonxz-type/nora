@@ -37,4 +37,12 @@ describe("reschedule service validation", () => {
     model.searchRescheduleAvailability.mockResolvedValue([{ id: 2 }]);
     expect(await getRescheduleAvailability(7, body)).toEqual([{ id: 2 }]);
   });
+  it.each([
+    { entregado_en: "2028-02-29T08:00" },
+    { devuelto_en: "2028-02-29T10:00" },
+  ])("rejects searching for a reservation with delivery history", async (state) => {
+    model.getReservaById.mockResolvedValue({ id: 7, estado: "Reservado", ...state });
+    await expect(getRescheduleAvailability(7, body)).rejects.toMatchObject({ status: 409, code: "RESERVA_ALREADY_DELIVERED" });
+    expect(model.searchRescheduleAvailability).not.toHaveBeenCalled();
+  });
 });

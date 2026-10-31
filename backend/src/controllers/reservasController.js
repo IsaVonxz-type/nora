@@ -2,7 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import * as reservasService from "../services/reservasService.js";
 import { AppError } from "../utils/errors.js";
 import { isValidISODate } from "../utils/date.js";
-import { isPositivePostgresInteger } from "../utils/validation.js";
+import { isPositivePostgresInteger, parsePagination } from "../utils/validation.js";
 
 const DEFAULT_RESERVAS_LIMIT = 100;
 const MAX_RESERVAS_LIMIT = 1000;
@@ -107,7 +107,9 @@ export const list = asyncHandler(async (req, res) => {
 
 export const auditLog = asyncHandler(async (req, res) => {
   const id = parsePositiveInteger(req.params.id, "id");
-  res.json(await reservasService.getReservaAuditLog(id));
+  const result = await reservasService.getReservaAuditLog(id, parsePagination(req.query, { defaultLimit: 100, maxLimit: 200 }));
+  res.setHeader("X-Has-More", String(result.hasMore));
+  res.json(result.rows);
 });
 
 export const create = asyncHandler(async (req, res) => {

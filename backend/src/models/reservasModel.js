@@ -60,14 +60,14 @@ export async function listReservas({
   };
 }
 
-export async function listReservaAuditLog(id, limit = 100) {
+export async function listReservaAuditLog(id, { limit = 100, offset = 0 } = {}) {
   const { rows } = await query(
     `SELECT id, reserva_id, action, actor_user_id, actor_name, changed_at, old_values, new_values
      FROM reserva_audit_log WHERE reserva_id = $1
-     ORDER BY changed_at DESC, id DESC LIMIT $2`,
-    [id, limit],
+     ORDER BY changed_at DESC, id DESC LIMIT $2 OFFSET $3`,
+    [id, limit + 1, offset],
   );
-  return rows;
+  return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
 }
 
 
@@ -107,59 +107,6 @@ export async function confirmarEntrega(id, usuario, actorId = null) {
   return rows[0];
 }
 
-/**
- * Inserts a new reservation inside a transaction that first locks all
- * existing reservations for the same ambiente+fecha with FOR UPDATE.
- * Returns the inserted row, or null when a scheduling conflict is found
- * (and the new reservation's estado is not "Cancelado").
- */
-async function insertReservaWithClient(client, payload) {
-  const { ambiente_id, fecha, hora_inicio, hora_fin, estado } = payload;
-
-  await client.query(
-    "SELECT pg_advisory_xact_lock(hashtext($1))",
-    [`reserva:${ambiente_id}:${fecha}`],
-  );
-
-  const { rows: existing } = await client.query(
-    `SELECT hora_inicio, hora_fin, estado
-     FROM reservas
-     WHERE ambiente_id=$1 AND fecha=$2 AND estado <> $3
-     FOR UPDATE`,
-    [ambiente_id, fecha, "Cancelado"],
-  );
-
-  const conflict = existing.some(
-    (r) =>
-      BLOCKING_STATES.includes(r.estado) &&
-      overlaps(hora_inicio, hora_fin, r.hora_inicio, r.hora_fin),
-  );
-
-  if (conflict && estado !== "Cancelado") return null;
-
-  const { rows } = await client.query(
-    `INSERT INTO reservas
-       (ambiente_id, creado_por_id, fecha, hora_inicio, hora_fin, instructor, grupo, programa, competencia, estado, creado_por)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-     RETURNING *`,
-    [
-      payload.ambiente_id,
-      payload.creado_por_id,
-      payload.fecha,
-      payload.hora_inicio,
-      payload.hora_fin,
-      payload.instructor,
-      payload.grupo,
-      payload.programa,
-      payload.competencia,
-      payload.estado,
-      payload.creado_por,
-    ],
-  );
-
-  return rows[0];
-}
-
 function dateKey(value) {
   if (value instanceof Date) {
     return [value.getFullYear(), value.getMonth() + 1, value.getDate()]
@@ -167,6 +114,14 @@ function dateKey(value) {
       .join("-");
   }
   return String(value).slice(0, 10);
+}
+
+function isWithinSiteHours(horarios, payload) {
+  const day = new Date(`${dateKey(payload.fecha)}T12:00:00Z`).getUTCDay();
+  const horario = horarios.find((item) => item.dia_semana === day);
+  return Boolean(horario && !horario.cerrado &&
+    horario.hora_apertura <= payload.hora_inicio.slice(0, 5) &&
+    horario.hora_cierre >= payload.hora_fin.slice(0, 5));
 }
 
 export async function insertReservasAtomically(payloads) {
@@ -177,7 +132,7 @@ export async function insertReservasAtomically(payloads) {
     const firstPayload = payloads[0];
     const dates = payloads.map((payload) => payload.fecha);
     const ambienteResult = await client.query(
-      "SELECT a.estado, s.activo AS sede_activa FROM ambientes a JOIN sedes s ON s.id=a.sede_id WHERE a.id=$1 FOR SHARE OF a, s",
+      "SELECT a.estado, s.activo AS sede_activa, s.id AS sede_id FROM ambientes a JOIN sedes s ON s.id=a.sede_id WHERE a.id=$1 FOR SHARE OF a, s",
       [firstPayload.ambiente_id],
     );
     if (!ambienteResult.rows.length) {
@@ -193,6 +148,11 @@ export async function insertReservasAtomically(payloads) {
         "AMBIENTE_INACTIVE",
       );
     }
+    const horarios = await client.query(
+      `SELECT dia_semana, cerrado, to_char(hora_apertura, 'HH24:MI') AS hora_apertura,
+        to_char(hora_cierre, 'HH24:MI') AS hora_cierre FROM sede_horarios WHERE sede_id=$1`,
+      [ambienteResult.rows[0].sede_id],
+    );
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtext(key)) FROM unnest($1::text[]) AS keys(key)",
       [payloads.map((payload) => `reserva:${payload.ambiente_id}:${payload.fecha}`)],
@@ -222,6 +182,7 @@ export async function insertReservasAtomically(payloads) {
 
     const insertable = payloads.filter((payload) => {
       if (payload.estado === "Cancelado") return true;
+      if (!isWithinSiteHours(horarios.rows, payload)) return false;
       const blocked = blocks.some((block) =>
         block.inicio < `${dateKey(payload.fecha)}T${payload.hora_fin.slice(0, 5)}` &&
         block.fin > `${dateKey(payload.fecha)}T${payload.hora_inicio.slice(0, 5)}`,
@@ -307,7 +268,11 @@ export async function searchRescheduleAvailability(id, slot) {
   const { rows } = await query(
     `SELECT a.id, a.codigo, a.capacidad, s.nombre AS sede
      FROM ambientes a JOIN sedes s ON s.id=a.sede_id
-      WHERE a.estado AND s.activo AND NOT EXISTS (
+       WHERE a.estado AND s.activo AND EXISTS (
+        SELECT 1 FROM sede_horarios h WHERE h.sede_id=s.id
+        AND h.dia_semana=EXTRACT(DOW FROM $2::date) AND NOT h.cerrado
+        AND h.hora_apertura <= $3::time AND h.hora_cierre >= $4::time
+      ) AND NOT EXISTS (
        SELECT 1 FROM reservas r WHERE r.ambiente_id=a.id AND r.id<>$1
        AND r.fecha=$2 AND r.estado IN ('Reservado', 'No disponible')
        AND r.hora_inicio<$4::time AND r.hora_fin>$3::time
@@ -325,15 +290,22 @@ export async function rescheduleReservaAtomically(id, slot, original, actor = {}
   try {
     await client.query("BEGIN");
     await client.query("SELECT set_config('app.actor_name', $1, true), set_config('app.actor_user_id', COALESCE($2::text, ''), true)", [actor.name || "sistema", actor.id ?? null]);
-    const room = await client.query("SELECT a.estado, s.activo AS sede_activa FROM ambientes a JOIN sedes s ON s.id=a.sede_id WHERE a.id=$1 FOR SHARE OF a, s", [slot.ambiente_id]);
+    const room = await client.query("SELECT a.estado, s.activo AS sede_activa, s.id AS sede_id FROM ambientes a JOIN sedes s ON s.id=a.sede_id WHERE a.id=$1 FOR SHARE OF a, s", [slot.ambiente_id]);
     if (!room.rows.length) throw new AppError("Ambiente no encontrado", 404, "AMBIENTE_NOT_FOUND");
     if (room.rows[0].sede_activa === false) throw new AppError("No se puede reservar en una sede archivada", 409, "SEDE_INACTIVE");
     if (!room.rows[0].estado) throw new AppError("No se puede reservar un ambiente inactivo", 409, "AMBIENTE_INACTIVE");
+    const horarios = await client.query(
+      `SELECT dia_semana, cerrado, to_char(hora_apertura, 'HH24:MI') AS hora_apertura,
+        to_char(hora_cierre, 'HH24:MI') AS hora_cierre FROM sede_horarios WHERE sede_id=$1`,
+      [room.rows[0].sede_id],
+    );
+    if (!isWithinSiteHours(horarios.rows, slot)) throw new AppError("El horario está fuera de la apertura de la sede", 409, "SEDE_CLOSED");
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`reserva:${slot.ambiente_id}:${slot.fecha}`]);
     const current = await client.query("SELECT * FROM reservas WHERE id=$1 FOR UPDATE", [id]);
     const reserva = current.rows[0];
     if (!reserva) throw new AppError("Reserva no encontrada", 404, "RESERVA_NOT_FOUND");
     if (reserva.estado === "Cancelado") throw new AppError("No se puede reprogramar una reserva cancelada", 409, "RESERVA_CANCELLED");
+    if (reserva.entregado_en || reserva.devuelto_en) throw new AppError("No se puede reprogramar una reserva que ya fue entregada", 409, "RESERVA_ALREADY_DELIVERED");
     const matchesSlot = (candidate) =>
       Number(reserva.ambiente_id) === Number(candidate.ambiente_id) &&
       dateKey(reserva.fecha) === candidate.fecha &&

@@ -72,9 +72,10 @@ export async function getReservas(filters) {
   return listReservasModel(filters);
 }
 
-export async function getReservaAuditLog(id) {
+export async function getReservaAuditLog(id, { limit = 100, offset = 0 } = {}) {
   if (!isPositivePostgresInteger(id)) throw new AppError("id debe ser un entero positivo", 400);
-  return listReservaAuditLogModel(id, 100);
+  if (!(await getReservaById(id))) throw new AppError("Reserva no encontrada", 404, "RESERVA_NOT_FOUND");
+  return listReservaAuditLogModel(id, { limit, offset });
 }
 
 function normalizeRescheduleSlot(body, requireRoom = true) {
@@ -93,6 +94,7 @@ export async function getRescheduleAvailability(id, body) {
   const reserva = await getReservaById(id);
   if (!reserva) throw new AppError("Reserva no encontrada", 404, "RESERVA_NOT_FOUND");
   if (reserva.estado === "Cancelado") throw new AppError("No se puede reprogramar una reserva cancelada", 409, "RESERVA_CANCELLED");
+  if (reserva.entregado_en || reserva.devuelto_en) throw new AppError("No se puede reprogramar una reserva que ya fue entregada", 409, "RESERVA_ALREADY_DELIVERED");
   return searchRescheduleAvailability(id, slot);
 }
 

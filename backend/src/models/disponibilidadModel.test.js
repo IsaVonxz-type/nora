@@ -61,6 +61,7 @@ describe("buscarDisponibilidad", () => {
     await buscarDisponibilidad(params);
 
     const [, queryParams] = mockQuery.mock.calls[0];
+    expect(mockQuery.mock.calls[0][0]).toContain("FROM sede_horarios");
     expect(queryParams[0]).toBe(1);           // sede_id
     expect(queryParams[1]).toBe("2025-06-15"); // fecha
     expect(queryParams[2]).toBe("08:00");      // horaInicio
