@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +23,10 @@ vi.mock("../../hooks/useLocalStorageState", () => ({
 vi.mock("../ui/Toast", () => ({
   useToast: vi.fn(),
 }));
+
+vi.mock("../../services/demoApi", () => {
+  throw new Error("Demo chunk unavailable");
+});
 
 const toggle = vi.fn();
 const logout = vi.fn(() => Promise.resolve());
@@ -63,6 +67,7 @@ function renderMain(initialEntry = "/dashboard", role = "admin") {
 describe("MainLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     useDarkMode.mockReturnValue({ isDark: false, toggle });
     useLocalStorageState.mockReturnValue([false, setCollapsed]);
     useToast.mockReturnValue(toast);
@@ -140,6 +145,17 @@ describe("MainLayout", () => {
     expect(logoutButton).toBeTruthy();
     fireEvent.click(logoutButton);
     expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends demo logout even when resetting demo data fails to import", async () => {
+    sessionStorage.setItem("nora:demo:active:v1", "active");
+    renderMain();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    await waitFor(() => {
+      expect(sessionStorage.getItem("nora:demo:active:v1")).toBeNull();
+    });
   });
 
   it("mueve foco al menú móvil y lo devuelve al cerrarlo con Escape", () => {

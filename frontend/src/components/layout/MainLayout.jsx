@@ -12,7 +12,6 @@ import cardsStyles from "../ui/Cards.module.css";
 import reservationStyles from "../reservas/ReservationUI.module.css";
 import { brand } from "../../config/brand";
 import { endDemoSession, isDemoActive } from "../../services/demoSession";
-import { resetDemoData } from "../../services/demoApi";
 
 function NavIcon({ to }) {
   switch (to) {
@@ -170,10 +169,12 @@ export function MainLayout() {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (demoActive) {
+      await import("../../services/demoApi")
+        .then(({ resetDemoData }) => resetDemoData())
+        .catch(() => undefined);
       endDemoSession();
-      resetDemoData();
       navigate("/", { replace: true });
       return;
     }
